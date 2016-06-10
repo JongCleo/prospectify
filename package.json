@@ -16,4 +16,9 @@
     "url": "https://github.com/JongCleo/prospectify/issues"
   },
   "homepage": "https://github.com/JongCleo/prospectify#readme",
+  "dependencies": {
+    "phantomjs": "^2.1.7",
+    "csvtojson": "latest",
+    "nightmare": "latest"
+  }
 }
