@@ -1,0 +1,19 @@
+{
+  "name": "prospectify",
+  "version": "1.0.0",
+  "description": "Streamlining the process of finding a contact for a prospect company",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JongCleo/prospectify.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/JongCleo/prospectify/issues"
+  },
+  "homepage": "https://github.com/JongCleo/prospectify#readme"
+}
