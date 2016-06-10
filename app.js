@@ -4,7 +4,8 @@ var converter = new Converter({});
 
 //end_parsed will be emitted once parsing finished
 converter.on("end_parsed", function (jsonArray) {
-   console.log(jsonArray); //here is your result jsonarray
+  var first_company = jsonArray[0]['Company name'];
+  console.log(first_company);
 });
 
 //read from file
