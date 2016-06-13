@@ -10,7 +10,7 @@ converter.on("end_parsed", function (jsonArray) {
   console.log(first_company);
   var plus_company = first_company.split(" ");
   console.log(plus_company);
-  evaluate(first_company);
+  evaluate(plus_company);
 });
 
 //read from file
@@ -20,20 +20,13 @@ function evaluate(url)
 {
   new Nightmare()
   .useragent("Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36")
-  .goto('https://www.linkedin.com/start/join')
-  .wait()
-  .click('.sign-in-link')
-  .type('#session_key-login','trevor@trevorsookraj.com')
-  .type('#session_password-login','password')
-  .click('.btn-primary')
-  .wait()
+
   .goto('https://www.linkedin.com/vsearch/f?type=all&keywords=ecommerce+at+'+url[0]+['\+']+url[1])
-  .screenshot('nsdigger.png')
+  .wait()
+  .screenshot('linkedin.png')
   .evaluate(function () {
     var full_name = [];
     var title = [];
-    var bio = [];
-
 //where main headline is full name
     console.log($('h2').text())
     $('.title.main-headline').each(function(i, elem) {
@@ -46,20 +39,12 @@ function evaluate(url)
       title[i] = $(this).text();
     });
 
-//where link is bio
-    $('.title.main-headline').each(function(i, elem) {
-      bio[i] = $(this).href;
-    });
-
     return {
       full_namerc1: full_name[0],
-      full_namerc2: full_name[1],
-      titlerc1: full_name[0],
-      titlerc2: title[1],
-      biorc1: bio[0],
-      biorc2: bio[1],
+      titlerc1: title[1]
     }
   })
+
   .end()
   .then(function (result) {
     //output in call back
@@ -70,3 +55,31 @@ function evaluate(url)
   });
 
 }
+
+//
+// .goto('https://www.linkedin.com/vsearch/f?type=all&keywords=ecommerce+at+'+url[0]+['\+']+url[1])
+// .click('.title.main-headline')
+// .wait()
+// .screenshot('getbio.png')
+// .evaluate(function () {
+//   var bio = [];
+//   if(typeof $('.view-public-profile') != "undefined")
+//   {
+//     $('.view-public-profile').each(function(i, elem) {
+//       bio[0] = $(this).text();
+//     });
+//
+//     return {
+//       bio0: bio[0]
+//     }
+//   }
+// })
+
+/*  .goto('https://www.linkedin.com/start/join')
+  .wait()
+  .click('.sign-in-link')
+  .type('#session_key-login','trevor@trevorsookraj.com')
+  .type('#session_password-login','Hackdays2016 ')
+  .click('.btn-primary')
+  .wait()
+*/
