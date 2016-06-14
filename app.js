@@ -21,6 +21,7 @@ converter.on("end_parsed", function (jsonArray) {
 });
 
 function evalStats(url)
+
 {
   new Nightmare()
   .useragent("Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36")
@@ -30,8 +31,8 @@ function evalStats(url)
   .evaluate(function () {
     var full_name = [];
     var title = [];
+
 //where main headline is full name
-    console.log($('h2').text())
     $('.title.main-headline').each(function(i, elem) {
       full_name[i] = $(this).text();
       console.log(full_name[i]);
@@ -89,11 +90,12 @@ function evalBio(url)
   });
 }
 
+
+//
 //
 // .goto('https://www.linkedin.com/vsearch/f?type=all&keywords=ecommerce+at+'+url[0]+['\+']+url[1])
 // .click('.title.main-headline')
 // .wait()
-// .screenshot('getbio.png')
 // .evaluate(function () {
 //   var bio = [];
 //   if(typeof $('.view-public-profile') != "undefined")
@@ -102,12 +104,11 @@ function evalBio(url)
 //       bio[0] = $(this).text();
 //     });
 //
-//     return {
-//       bio0: bio[0]
+//     return = {
+//       bio0 : bio[0]
 //     }
 //   }
 // })
-
 /*  .goto('https://www.linkedin.com/start/join')
   .wait()
   .click('.sign-in-link')
