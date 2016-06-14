@@ -24,7 +24,15 @@ function evalStats(url)
 
 {
   new Nightmare()
+
   .useragent("Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36")
+    // .goto('https://www.linkedin.com/start/join')
+    // .wait()
+    // .click('.sign-in-link')
+    // .type('#session_key-login','trevor@trevorsookraj.com')
+    // .type('#session_password-login','Hackdays2016 ')
+    // .click('.btn-primary')
+    // .wait()
   .goto('https://www.linkedin.com/vsearch/f?type=all&keywords=ecommerce+at+'+url)
   .wait()
   .wait()
@@ -109,11 +117,3 @@ function evalBio(url)
 //     }
 //   }
 // })
-/*  .goto('https://www.linkedin.com/start/join')
-  .wait()
-  .click('.sign-in-link')
-  .type('#session_key-login','trevor@trevorsookraj.com')
-  .type('#session_password-login','Hackdays2016 ')
-  .click('.btn-primary')
-  .wait()
-*/
