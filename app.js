@@ -1,29 +1,32 @@
 var Nightmare = require('nightmare');
-
 //Converter Class
 var Converter = require("csvtojson").Converter;
 var converter = new Converter({});
 
-//end_parsed will be emitted once parsing finished
-converter.on("end_parsed", function (jsonArray) {
-  var first_company = jsonArray[0]['Company name'];
-  console.log(first_company);
-  var plus_company = first_company.split(" ");
-  console.log(plus_company);
-  evaluate(plus_company);
-});
 
 //read from file
 require("fs").createReadStream("./test.csv").pipe(converter);
 
-function evaluate(url)
+//end_parsed will be emitted once parsing finished
+converter.on("end_parsed", function (jsonArray) {
+  for(var i =0; i<jsonArray.length; i++)
+  {
+    var first_company = jsonArray[i]['Company name'];
+    var plus_company = first_company.split(" ").join('+');
+    console.log(plus_company);
+    evalStats(plus_company);
+    evalBio(plus_company);
+  }
+
+});
+
+function evalStats(url)
 {
   new Nightmare()
   .useragent("Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36")
-
-  .goto('https://www.linkedin.com/vsearch/f?type=all&keywords=ecommerce+at+'+url[0]+['\+']+url[1])
+  .goto('https://www.linkedin.com/vsearch/f?type=all&keywords=ecommerce+at+'+url)
   .wait()
-  .screenshot('linkedin.png')
+  .wait()
   .evaluate(function () {
     var full_name = [];
     var title = [];
@@ -44,16 +47,46 @@ function evaluate(url)
       titlerc1: title[1]
     }
   })
-
   .end()
   .then(function (result) {
     //output in call back
     console.log(result)
   })
   .catch(function (error) {
-    console.error('Search failed:', error);
+    console.error('Search failed:', error +" Also, here is company name: "+url);
   });
+}
 
+function evalBio(url)
+{
+  new Nightmare()
+  .useragent("Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36")
+  .goto('https://www.linkedin.com/vsearch/f?type=all&keywords=ecommerce+at+'+url)
+  .wait()
+  .wait()
+  .click('.title.main-headline')
+  .wait()
+  .evaluate(function () {
+    var bio = [];
+    if(typeof $('.view-public-profile') != "undefined")
+    {
+      $('.view-public-profile').each(function(i, elem) {
+        bio[0] = $(this).text();
+      });
+
+      return {
+        bio0: bio[0]
+      }
+    }
+  })
+  .end()
+  .then(function (result) {
+    //output in call back
+    console.log(result)
+  })
+  .catch(function (error) {
+    console.error('Search failed:', error+ " Also, here is company name: "+url);
+  });
 }
 
 //

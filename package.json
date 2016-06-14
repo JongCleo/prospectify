@@ -1,0 +1,27 @@
+{
+  "name": "prospectify",
+  "version": "1.0.0",
+  "description": "Streamlining the process of finding a contact from a prospect company.",
+  "main": "app.js",
+  "dependencies": {
+    "csvtojson": "latest",
+    "linkedin-scraper": "^1.0.1",
+    "nightmare": "latest",
+    "phantomjs": "^2.1.7",
+    "vo": "^3.1.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JongCleo/prospectify.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/JongCleo/prospectify/issues"
+  },
+  "homepage": "https://github.com/JongCleo/prospectify#readme"
+}
