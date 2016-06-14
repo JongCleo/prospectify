@@ -6,15 +6,19 @@ var converter = new Converter({});
 
 //end_parsed will be emitted once parsing finished
 converter.on("end_parsed", function (jsonArray) {
-  var first_company = jsonArray[0]['Company name'];
-  console.log(first_company);
-  var plus_company = first_company.split(" ");
-  console.log(plus_company);
-  evaluate(plus_company);
+  for (var i =0; i<jsonArray.length; i++){
+    var first_company = jsonArray[i]['Company name'];
+    console.log(first_company);
+    var plus_company = first_company.split(" ");
+    console.log(plus_company);
+    evaluate(plus_company);
+  }
+
 });
 
 //read from file
 require("fs").createReadStream("./test.csv").pipe(converter);
+
 
 function evaluate(url)
 {
@@ -23,12 +27,12 @@ function evaluate(url)
 
   .goto('https://www.linkedin.com/vsearch/f?type=all&keywords=ecommerce+at+'+url[0]+['\+']+url[1])
   .wait()
-  .screenshot('linkedin.png')
+  .screenshot('linkedinsearch.png')
   .evaluate(function () {
     var full_name = [];
     var title = [];
+    
 //where main headline is full name
-    console.log($('h2').text())
     $('.title.main-headline').each(function(i, elem) {
       full_name[i] = $(this).text();
       console.log(full_name[i]);
@@ -44,7 +48,6 @@ function evaluate(url)
       titlerc1: title[1]
     }
   })
-
   .end()
   .then(function (result) {
     //output in call back
@@ -56,11 +59,12 @@ function evaluate(url)
 
 }
 
+
+//
 //
 // .goto('https://www.linkedin.com/vsearch/f?type=all&keywords=ecommerce+at+'+url[0]+['\+']+url[1])
 // .click('.title.main-headline')
 // .wait()
-// .screenshot('getbio.png')
 // .evaluate(function () {
 //   var bio = [];
 //   if(typeof $('.view-public-profile') != "undefined")
@@ -69,12 +73,11 @@ function evaluate(url)
 //       bio[0] = $(this).text();
 //     });
 //
-//     return {
-//       bio0: bio[0]
+//     return = {
+//       bio0 : bio[0]
 //     }
 //   }
 // })
-
 /*  .goto('https://www.linkedin.com/start/join')
   .wait()
   .click('.sign-in-link')
