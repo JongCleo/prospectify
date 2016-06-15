@@ -1,7 +1,7 @@
 //Web scraping dependencies
 var Nightmare = require('nightmare'),
     Promise = require('q').Promise;
-var nightmare = new Nightmare({show:true})
+var nightmare = new Nightmare();
 
 var json2csv = require('json2csv');
 var fs = require('fs');
@@ -10,7 +10,7 @@ var fs = require('fs');
 var Converter = require("csvtojson").Converter;
 var converter = new Converter({});
 //read from file
-require("fs").createReadStream("./test.csv").pipe(converter);
+require("fs").createReadStream("./demand.csv").pipe(converter);
 
 //end_parsed will be emitted once parsing finished
 
@@ -22,7 +22,7 @@ var fields = ['company_name', 'full_name', 'title', 'bio'];
 
 converter.on("end_parsed", function (jsonArray) {
 
-  syncLoop(2,
+  syncLoop(10,
 
   function(loop){
     first_company = jsonArray[loop.iteration()]['Company name'];
@@ -90,26 +90,37 @@ function evalStats(url, callback){
             var full_name = [];
             var title = [];
 
-            $('.title.main-headline').each(function(i, elem) {
-              full_name[i] = $(this).text();
-            });
+            if($('.title.main-headline').length >0 ) {
+              $('.title.main-headline').each(function(i, elem) {
+                full_name[i] = $(this).text();
+              });
 
-            //where description is title
-            $('.description').each(function(i, elem) {
-              title[i] = $(this).text();
-            });
+              //where description is title
+              $('.description').each(function(i, elem) {
+                title[i] = $(this).text();
+              });
 
-            return {
-                full_name: full_name[0],
-                title: title[1]
-              }
+              return {
+                  full_name: full_name[0],
+                  title: title[1]
+                }
+            }
+            else{
+              return;
+            }
+
           }))
           .then(function(stuff){
                 console.log(stuff)
-                getBio(stuff, function(){
-                  callback()
-                });
-          });
+                if(stuff)
+                {
+                  getBio(stuff, function(){
+                    callback()
+                  })
+               }
+               else callback()
+
+          })
 }
 
 function getBio(data, callback){
@@ -129,13 +140,13 @@ function getBio(data, callback){
     .then(function(result){
         console.log(result)
 
-        var theObject = {
-          "company_name":first_company,
-          "full_name": data.full_name,
-          "title": data.title,
-          "bio": result
-        }
-        theArray.prospects.push(theObject);
+          var theObject = {
+            "company_name":first_company,
+            "full_name": data.full_name,
+            "title": data.title,
+            "bio": result
+          }
+          theArray.prospects.push(theObject);
 
         callback()
     })
