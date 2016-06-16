@@ -22,14 +22,14 @@ var fields = ['company_name', 'full_name', 'title', 'bio'];
 
 converter.on("end_parsed", function (jsonArray) {
 
-  syncLoop(3,
+  syncLoop(jsonArray.length,
 
   function(loop){
     first_company = jsonArray[loop.iteration()]['Company name'].toLowerCase().replace('llc','').replace('inc','');
     plus_company = first_company.split(" ").join('+');
     console.log(plus_company);
 
-    evalStats(plus_company,
+    findLink(plus_company,
     function(){
       // nightmare.proc.disconnect();
       // nightmare.ended = true;
@@ -55,55 +55,38 @@ function exportdata(dataSet, headers) {
   });
 }
 
-
-  //TODO: code to check if loggedin
-
-function evalStats(url, callback){
+function findLink(url, callback){
     Promise.resolve(nightmare
           .useragent("Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36")
-            // .goto ('https://www.linkedin.com')
-            // .wait()
-            // .mousedown('.account-toggle.nav-link')
-            // .click('.account-submenu-split-link')
-            // .wait()
-            // .goto('https://www.linkedin.com/')
-            // .wait()
-            // .type('#login-email','hona5090@mylaurier.ca')
-            // .type('#login-password','Hirads12')
-            // .type('document', '\u000d')
-            // .wait()
-          .goto('https://www.linkedin.com/vsearch/f?type=all&keywords=ecommerce+at+'+url)
+          .goto('https://www.google.ca/search?q=ecommerce+at+'+url+"+linkedin")
           .wait()
           .evaluate(function(){
-            var full_name = [];
-            var title = [];
 
-            if($('.title.main-headline').length >0 ) {
+            var checkTitle = [];
+            var bio;
+            var profileLink;
 
-              $('.title.main-headline').each(function(i, elem) {
-                full_name[i] = $(this).text();
-              });
-              //where description is title
-              $('.description').each(function(i, elem)
+            $(.f.slp).each(function(i, elem){
+              checkTitle[i] = $(this).text().toLowerCase();
+              if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("founder") > -1)) && (checkTitle[i].indexOf(url.split("+").join(" ")) > -1))
               {
-                title[i] = $(this).text();
-              });
-
-              //if(title[i].search(url) == 1)
-              return {
-                  full_name: full_name[0],
-                  title: title[1]
+                bio = $(this).parent().find("._Rm")
+                profileLink = $(this).parent().parent().parent().find('h3')
+                break;
               }
+            });
 
-          }
-            else return;
+            return {
+                retLink: profileLink,
+                retBio : bio
+            }
+
           }))
-
           .then(function(stuff){
                 console.log(stuff)
                 if(stuff)
                 {
-                  getBio(stuff, function(){
+                  goProfile(stuff, function(){
                     callback()
                   })
                 }
@@ -111,28 +94,27 @@ function evalStats(url, callback){
           })
 }
 
-function getBio(data, callback){
+function goProfile(data, callback){
     Promise.resolve(nightmare
-      .click('.title.main-headline')
+      .click(data.retLink)
       .wait()
       .evaluate(function () {
-        var bio = [];
-        if($('.view-public-profile').length >0 )
-        {
-          $('.view-public-profile').each(function(i, elem) {
-            bio[0] = $(this).text();
-          });
-          return bio[0]
+
+        return {
+          full_name: $('.full-name').text(),
+          title: $('.title.field-text').text()
         }
+
       }))
-    .then(function(result){
+      .then(function(result){
         console.log(result)
 
           var theObject = {
             "company_name":first_company,
-            "full_name": data.full_name,
-            "title": data.title,
-            "bio": result
+            //get domain
+            "full_name": result.full_name,
+            "title": result.title,
+            "bio": data.retBio
           }
           theArray.prospects.push(theObject);
 
