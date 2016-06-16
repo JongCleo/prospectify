@@ -1,16 +1,17 @@
 //Web scraping dependencies
 var Nightmare = require('nightmare'),
     Promise = require('q').Promise;
-var nightmare = new Nightmare();
+var nightmare = new Nightmare({show:true});
 
 var json2csv = require('json2csv');
 var fs = require('fs');
+var bluebird = require('bluebird')
 
 //Converter Class
 var Converter = require("csvtojson").Converter;
 var converter = new Converter({});
 //read from file
-require("fs").createReadStream("./demand.csv").pipe(converter);
+require("fs").createReadStream("./zacksthing.csv").pipe(converter);
 
 //end_parsed will be emitted once parsing finished
 
@@ -22,10 +23,10 @@ var fields = ['company_name', 'full_name', 'title', 'bio'];
 
 converter.on("end_parsed", function (jsonArray) {
 
-  syncLoop(10,
+  syncLoop(jsonArray.length,
 
   function(loop){
-    first_company = jsonArray[loop.iteration()]['Company name'];
+    first_company = jsonArray[loop.iteration()]['Company name'].toLowerCase().replace('llc','').replace('inc','');
     plus_company = first_company.split(" ").join('+');
     console.log(plus_company);
 
@@ -48,7 +49,7 @@ converter.on("end_parsed", function (jsonArray) {
 function exportdata(dataSet, headers) {
   json2csv( { data: dataSet, fields: headers }, function(err, csv) {
     if (err) console.log(err);
-    fs.writeFile('./export.csv', csv, function(err) {
+    fs.writeFile('./magnetoleads.csv', csv, function(err) {
       if (err) throw err;
       console.log('file saved');
     })
@@ -77,12 +78,16 @@ function exportdata(dataSet, headers) {
 function evalStats(url, callback){
     Promise.resolve(nightmare
           .useragent("Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36")
+            // .goto ('https://www.linkedin.com')
+            // .wait()
+            // .mousedown('.account-toggle.nav-link')
+            // .click('.account-submenu-split-link')
+            // .wait()
             // .goto('https://www.linkedin.com/start/join')
             // .wait()
-            // .click('.sign-in-link')
-            // .type('#session_key-login','trevor@trevorsookraj.com')
-            // .type('#session_password-login','Hackdays2016 ')
-            // .click('.btn-primary')
+            // .type('#login-email','hona5090@mylaurier.ca')
+            // .type('#login-password','Hirads12')
+            // .type('document', '\u000d')
             // .wait()
           .goto('https://www.linkedin.com/vsearch/f?type=all&keywords=ecommerce+at+'+url)
           .wait()
@@ -96,20 +101,23 @@ function evalStats(url, callback){
               });
 
               //where description is title
-              $('.description').each(function(i, elem) {
+              $('.description').each(function(i, elem)
+              {
                 title[i] = $(this).text();
               });
-
+              if(title[i].search(url) == 1) {
               return {
                   full_name: full_name[0],
                   title: title[1]
                 }
             }
+          }
             else{
               return;
             }
 
           }))
+
           .then(function(stuff){
                 console.log(stuff)
                 if(stuff)
@@ -151,6 +159,14 @@ function getBio(data, callback){
         callback()
     })
 }
+
+Promise.resolve('promised value').done(function() {
+    throw new Error('error');
+});
+
+Promise.onPossiblyUnhandledRejection(function(error){
+    throw error;
+});
 
 function syncLoop(iterations, process, exit){
     var index = 0,

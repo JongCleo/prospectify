@@ -4,12 +4,12 @@
   "description": "Streamlining the process of finding a contact from a prospect company.",
   "main": "app.js",
   "dependencies": {
+    "bluebird": "^3.4.0",
     "csvtojson": "latest",
+    "fs": "latest",
+    "json2csv": "^3.4.2",
     "nightmare": "latest",
-    "q": "^1.4.1",
-    "json2csv":"^3.4.2",
-    "fs":"latest"
-
+    "q": "^1.4.1"
   },
   "devDependencies": {},
   "scripts": {
