@@ -1,7 +1,7 @@
 //Web scraping dependencies
 var Nightmare = require('nightmare'),
     Promise = require('q').Promise;
-var nightmare = new Nightmare({show:true});
+var nightmare = new Nightmare();
 
 var request = require('request');
 request = request.defaults();
@@ -25,7 +25,7 @@ var fields = ['company_name', 'full_name', 'title', 'bio'];
 
 converter.on("end_parsed", function (jsonArray) {
 
-  syncLoop(jsonArray.length,
+  syncLoop(10,
 
   function(loop){
     first_company = jsonArray[loop.iteration()]['Company name'].toLowerCase().replace('llc','').replace('inc','').split(" ").join('+');
@@ -33,13 +33,16 @@ converter.on("end_parsed", function (jsonArray) {
 
     findLink(plus_company,
     function(){
-      var nightmare = new Nightmare({show:true})
+      var nightmare = new Nightmare()
       loop.next()
     })
   },
 
   function(){
     exportdata(theArray.prospects, fields);
+    nightmare.proc.disconnect();
+    nightmare.proc.kill();
+    nightmare.ended = true;
     console.log('done')
   })
 
@@ -60,6 +63,14 @@ function findLink(url, callback){
     googleWrap(url, function(bio, profileLink){
       if(!profileLink)
       {
+        var theObject = {
+          "company_name":first_company.split("+").join(' '),
+          //get domain
+          "full_name": "",
+          "title": "",
+          "bio": ""
+        }
+        theArray.prospects.push(theObject);
         callback();
       }
       Promise.resolve(
@@ -85,7 +96,7 @@ function findLink(url, callback){
                 "title": stuff.title,
                 "bio": bio
               }
-              console.log(theObject)
+              //console.log(theObject)
               theArray.prospects.push(theObject);
 
               callback()
@@ -116,9 +127,6 @@ function googleWrap(daurl, callback){
 
           for (var i = 0; i < checkTitle.length; i ++)
           {
-
-            console.log(first_company.split("+").join(' '))
-            console.log(checkTitle[i])
             if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && (checkTitle[i].indexOf(first_company.split("+").join(' ').replace("\’", "\'")) > -1))
             {
 
