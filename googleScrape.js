@@ -1,7 +1,7 @@
 //Web scraping dependencies
 var Nightmare = require('nightmare'),
     Promise = require('q').Promise;
-var nightmare = new Nightmare({show:true});
+var nightmare = new Nightmare({show:true, openDevTools:true});
 
 var json2csv = require('json2csv');
 var fs = require('fs');
@@ -27,10 +27,11 @@ converter.on("end_parsed", function (jsonArray) {
   function(loop){
     first_company = jsonArray[loop.iteration()]['Company name'].toLowerCase().replace('llc','').replace('inc','');
     plus_company = first_company.split(" ").join('+');
-    console.log(plus_company);
+    console.log(first_company);
 
     findLink(plus_company,
     function(){
+      console.log("moooving on")
       // nightmare.proc.disconnect();
       // nightmare.ended = true;
       var nightmare = new Nightmare({show:true})
@@ -56,53 +57,55 @@ function exportdata(dataSet, headers) {
 }
 
 function findLink(url, callback){
+
     Promise.resolve(nightmare
           .useragent("Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36")
           .goto('https://www.google.ca/search?q=ecommerce+at+'+url+"+linkedin")
           .wait()
-          .evaluate(function(){
+          .evaluate(function (){
 
             var checkTitle = [];
             var bio;
             var profileLink;
+            var theLink;
 
-            $(.f.slp).each(function(i, elem){
+            var found = $('.f.slp', body);
+
+
+            found.each(function(i){
               checkTitle[i] = $(this).text().toLowerCase();
-              if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("founder") > -1)) && (checkTitle[i].indexOf(url.split("+").join(" ")) > -1))
+              if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("founder") > -1)) && (checkTitle[i].indexOf(first_company) > -1))
               {
                 bio = $(this).parent().find("._Rm")
                 profileLink = $(this).parent().parent().parent().find('h3')
-                break;
               }
-            });
+            })
 
             return {
-                retLink: profileLink,
-                retBio : bio
+              linkTxt: profileLink,
+              // link: theLink,
+              bioTxt : bio
             }
 
           }))
           .then(function(stuff){
-                console.log(stuff)
-                if(stuff)
-                {
-                  goProfile(stuff, function(){
-                    callback()
-                  })
-                }
-                else callback()
+                console.log("bio data: "+stuff)
+
+                goProfile(stuff, function(){
+                  callback()
+                })
           })
 }
 
 function goProfile(data, callback){
     Promise.resolve(nightmare
-      .click(data.retLink)
+      .click('h3 a')
       .wait()
       .evaluate(function () {
 
         return {
           full_name: $('.full-name').text(),
-          title: $('.title.field-text').text()
+          title: $('.title').text()
         }
 
       }))
