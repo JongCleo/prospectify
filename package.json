@@ -4,7 +4,8 @@
   "description": "Streamlining the process of finding a contact from a prospect company.",
   "main": "app.js",
   "dependencies": {
-    "bluebird": "^3.4.0",
+    "cheerio": "latest",
+    "cheerio-eq": "latest",
     "csvtojson": "latest",
     "fs": "latest",
     "json2csv": "^3.4.2",
