@@ -1,23 +1,26 @@
 //Web scraping dependencies
 var Nightmare = require('nightmare'),
     Promise = require('q').Promise;
-var nightmare = new Nightmare({show:true, openDevTools:true});
+var nightmare = new Nightmare({show:true});
+
+var request = require('request');
+request = request.defaults();
+var cheerio = require("cheerio");
+var find = require('cheerio-eq');
 
 var json2csv = require('json2csv');
 var fs = require('fs');
 
-//Converter Class
 var Converter = require("csvtojson").Converter;
 var converter = new Converter({});
-//read from file
 require("fs").createReadStream("test.csv").pipe(converter);
-
-//end_parsed will be emitted once parsing finished
+/////////////////////////////////////////////////////////////
 
 var first_company, plus_company;
 var theArray = {
   prospects:[]
 }
+
 var fields = ['company_name', 'full_name', 'title', 'bio'];
 
 converter.on("end_parsed", function (jsonArray) {
@@ -25,15 +28,12 @@ converter.on("end_parsed", function (jsonArray) {
   syncLoop(jsonArray.length,
 
   function(loop){
-    first_company = jsonArray[loop.iteration()]['Company name'].toLowerCase().replace('llc','').replace('inc','');
-    plus_company = first_company.split(" ").join('+');
+    first_company = jsonArray[loop.iteration()]['Company name'].toLowerCase().replace('llc','').replace('inc','').split(" ").join('+');
+    plus_company = encodeURIComponent(first_company)
     console.log(first_company);
 
     findLink(plus_company,
     function(){
-      console.log("moooving on")
-      // nightmare.proc.disconnect();
-      // nightmare.ended = true;
       var nightmare = new Nightmare({show:true})
       loop.next()
     })
@@ -56,74 +56,85 @@ function exportdata(dataSet, headers) {
   });
 }
 
+
 function findLink(url, callback){
+    googleWrap(url, function(bio, profileLink){
+      Promise.resolve(
 
-    Promise.resolve(nightmare
-          .useragent("Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36")
-          .goto('https://www.google.ca/search?q=ecommerce+at+'+url+"+linkedin")
-          .wait()
-          .evaluate(function (){
+        nightmare
+            .useragent("Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36")
+            .goto(profileLink)
+            .wait()
+            .evaluate(function (){
 
-            var checkTitle = [];
-            var bio;
-            var profileLink;
-            var theLink;
-
-            var found = $('.f.slp', body);
-
-
-            found.each(function(i){
-              checkTitle[i] = $(this).text().toLowerCase();
-              if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("founder") > -1)) && (checkTitle[i].indexOf(first_company) > -1))
-              {
-                bio = $(this).parent().find("._Rm")
-                profileLink = $(this).parent().parent().parent().find('h3')
+              return {
+                full_name: $('.full-name').text(),
+                title: $('.title').text()
               }
+
+            }))
+            .then(function(stuff){
+
+              var theObject = {
+                "company_name":first_company.split("+").join(' '),
+                //get domain
+                "full_name": stuff.full_name,
+                "title": stuff.title,
+                "bio": bio
+              }
+              console.log(theObject)
+              theArray.prospects.push(theObject);
+
+              callback()
             })
-
-            return {
-              linkTxt: profileLink,
-              // link: theLink,
-              bioTxt : bio
-            }
-
-          }))
-          .then(function(stuff){
-                console.log("bio data: "+stuff)
-
-                goProfile(stuff, function(){
-                  callback()
-                })
-          })
-}
-
-function goProfile(data, callback){
-    Promise.resolve(nightmare
-      .click('h3 a')
-      .wait()
-      .evaluate(function () {
-
-        return {
-          full_name: $('.full-name').text(),
-          title: $('.title').text()
-        }
-
-      }))
-      .then(function(result){
-        console.log(result)
-
-          var theObject = {
-            "company_name":first_company,
-            //get domain
-            "full_name": result.full_name,
-            "title": result.title,
-            "bio": data.retBio
-          }
-          theArray.prospects.push(theObject);
-
-        callback()
     })
 }
+
+function googleWrap(daurl, callback){
+  var options = {
+      url:  "https://www.google.ca/search?q=ecommerce+at+"+daurl+"+linkedin",
+      headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.6; rv:1.9.2.16) Gecko/20110319 Firefox/3.6.16'
+      }
+  }
+
+  request(options, function (err, res, body) {
+          var $ = cheerio.load(body);
+
+          var checkTitle = []
+          var elem
+          var endselector, bioselector;
+          var bio;
+          var profileLink;
+
+          $(".f.slp").each(function(n){
+            checkTitle[n] = $(this).text().toLowerCase()
+          })
+
+          for (var i = 0; i < checkTitle.length; i ++)
+          {
+
+            console.log(first_company.split("+").join(' '))
+            console.log(checkTitle[i])
+            if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && (checkTitle[i].indexOf(first_company.split("+").join(' ').replace("\’", "\'")) > -1))
+            {
+
+              baseselector =".f.slp:eq("+i+")";
+              bioselector="cite:eq("+i+")";
+
+              bio = find($, baseselector).parent().children().first().children().first().text()
+              elem = find($, baseselector).parent().parent().children().first().children().attr('href')
+              profileLink = find($, baseselector).parent().parent().children().first().children().attr('href').substring(7, elem.indexOf('&'))
+
+              break;
+            }
+
+          }
+          callback(bio, profileLink)
+
+  })
+}
+
 
 function syncLoop(iterations, process, exit){
     var index = 0,

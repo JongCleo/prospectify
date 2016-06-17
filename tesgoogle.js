@@ -1,7 +1,4 @@
-var request = require('request');
-request = request.defaults();
-var cheerio = require("cheerio");
-var find = require('cheerio-eq');
+
 
 var Nightmare = require('nightmare'),
     Promise = require('q').Promise;
@@ -9,15 +6,8 @@ var nightmare = new Nightmare({show:true, openDevTools:true});
 
 aURL = encodeURIComponent("Pier+1+Imports").toLowerCase()
 
-var bio;
-var profileLink;
-var theArray = {
-  prospects:[]
-}
 
-findLink(aURL, function(){
 
-})
 
 function findLink(theURL, callback){
     googleWrap(theURL, function(){
