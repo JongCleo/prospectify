@@ -13,7 +13,7 @@ var fs = require('fs');
 
 var Converter = require("csvtojson").Converter;
 var converter = new Converter({});
-require("fs").createReadStream("test.csv").pipe(converter);
+require("fs").createReadStream("demand.csv").pipe(converter);
 /////////////////////////////////////////////////////////////
 
 var first_company, plus_company;
@@ -30,7 +30,6 @@ converter.on("end_parsed", function (jsonArray) {
   function(loop){
     first_company = jsonArray[loop.iteration()]['Company name'].toLowerCase().replace('llc','').replace('inc','').split(" ").join('+');
     plus_company = encodeURIComponent(first_company)
-    console.log(first_company);
 
     findLink(plus_company,
     function(){
@@ -49,7 +48,7 @@ converter.on("end_parsed", function (jsonArray) {
 function exportdata(dataSet, headers) {
   json2csv( { data: dataSet, fields: headers }, function(err, csv) {
     if (err) console.log(err);
-    fs.writeFile('testexport.csv', csv, function(err) {
+    fs.writeFile('demandexport.csv', csv, function(err) {
       if (err) throw err;
       console.log('file saved');
     })
@@ -59,6 +58,10 @@ function exportdata(dataSet, headers) {
 
 function findLink(url, callback){
     googleWrap(url, function(bio, profileLink){
+      if(!profileLink)
+      {
+        callback();
+      }
       Promise.resolve(
 
         nightmare
@@ -120,7 +123,6 @@ function googleWrap(daurl, callback){
             {
 
               baseselector =".f.slp:eq("+i+")";
-              bioselector="cite:eq("+i+")";
 
               bio = find($, baseselector).parent().children().first().children().first().text()
               elem = find($, baseselector).parent().parent().children().first().children().attr('href')
