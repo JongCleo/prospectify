@@ -1,7 +1,7 @@
 //Web scraping dependencies
 var Nightmare = require('nightmare'),
     Promise = require('q').Promise;
-var nightmare = new Nightmare();
+var nightmare = new Nightmare({show:true});
 
 var request = require('request');
 request = request.defaults();
@@ -60,7 +60,9 @@ function exportdata(dataSet, headers) {
 
 
 function findLink(url, callback){
+
     googleWrap(url, function(bio, profileLink){
+
       if(!profileLink)
       {
         var theObject = {
@@ -73,34 +75,34 @@ function findLink(url, callback){
         theArray.prospects.push(theObject);
         callback();
       }
+
       Promise.resolve(
-
         nightmare
-            .useragent("Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36")
-            .goto(profileLink)
-            .wait()
-            .evaluate(function (){
+          .useragent("Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36")
+          .goto(profileLink)
+          .wait()
+          .evaluate(function (){
 
-              return {
-                full_name: $('.full-name').text(),
-                title: $('.title').text()
-              }
+            return {
+              full_name: $('.full-name').text(),
+              title: $('.title').text()
+            }
 
-            }))
-            .then(function(stuff){
+          }))
+          .then(function(stuff){
 
-              var theObject = {
-                "company_name":first_company.split("+").join(' '),
-                //get domain
-                "full_name": stuff.full_name,
-                "title": stuff.title,
-                "bio": bio
-              }
-              //console.log(theObject)
-              theArray.prospects.push(theObject);
+            var theObject = {
+              "company_name":first_company.split("+").join(' '),
+              //get domain
+              "full_name": stuff.full_name,
+              "title": stuff.title,
+              "bio": bio
+            }
+            //console.log(theObject)
+            theArray.prospects.push(theObject);
 
-              callback()
-            })
+            callback()
+          })
     })
 }
 
@@ -111,39 +113,40 @@ function googleWrap(daurl, callback){
           'User-Agent': 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.6; rv:1.9.2.16) Gecko/20110319 Firefox/3.6.16'
       }
   }
+  setTimeout(function () {
+    request(options, function (err, res, body) {
+            var $ = cheerio.load(body);
+            var checkTitle = []
+            var elem
+            var endselector, bioselector;
+            var bio;
+            var profileLink;
 
-  request(options, function (err, res, body) {
-          var $ = cheerio.load(body);
+            $(".f.slp").each(function(n){
+              checkTitle[n] = $(this).text().toLowerCase()
+            })
 
-          var checkTitle = []
-          var elem
-          var endselector, bioselector;
-          var bio;
-          var profileLink;
-
-          $(".f.slp").each(function(n){
-            checkTitle[n] = $(this).text().toLowerCase()
-          })
-
-          for (var i = 0; i < checkTitle.length; i ++)
-          {
-            if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && (checkTitle[i].indexOf(first_company.split("+").join(' ').replace("\’", "\'")) > -1))
+            for (var i = 0; i < checkTitle.length; i ++)
             {
+              if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && (checkTitle[i].indexOf(first_company.split("+").join(' ').replace("\’", "\'")) > -1))
+              {
 
-              baseselector =".f.slp:eq("+i+")";
+                baseselector =".f.slp:eq("+i+")";
 
-              bio = find($, baseselector).parent().children().first().children().first().text()
-              elem = find($, baseselector).parent().parent().children().first().children().attr('href')
-              profileLink = find($, baseselector).parent().parent().children().first().children().attr('href').substring(7, elem.indexOf('&'))
+                bio = find($, baseselector).parent().children().first().children().first().text()
+                elem = find($, baseselector).parent().parent().children().first().children().attr('href')
+                profileLink = find($, baseselector).parent().parent().children().first().children().attr('href').substring(7, elem.indexOf('&'))
 
-              break;
+                break;
+              }
+
             }
+            callback(bio, profileLink)
 
-          }
-          callback(bio, profileLink)
+    })
+  }, 5000)
 
-  })
-}
+ }
 
 
 function syncLoop(iterations, process, exit){
