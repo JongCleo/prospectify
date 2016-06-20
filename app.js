@@ -1,144 +1,166 @@
 //Web scraping dependencies
 var Nightmare = require('nightmare'),
     Promise = require('q').Promise;
-var nightmare = new Nightmare({show:true});
+var nightmare = new Nightmare();
+
+var request = require('request');
+request = request.defaults();
+var cheerio = require("cheerio");
+var find = require('cheerio-eq');
 
 var json2csv = require('json2csv');
 var fs = require('fs');
 
-//Converter Class
 var Converter = require("csvtojson").Converter;
 var converter = new Converter({});
-//read from file
-require("fs").createReadStream("test.csv").pipe(converter);
+require("fs").createReadStream("demand.csv").pipe(converter);
 
-//end_parsed will be emitted once parsing finished
+var fs = require('fs');
+var readline = require('readline');
+var google = require('googleapis');
+var googleAuth = require('google-auth-library');
+//////////////////////////////////////////////////////////
+
+// If modifying these scopes, delete your previously saved credentials
+// at ~/.credentials/drive-nodejs-quickstart.json
+var SCOPES = ['https://www.googleapis.com/auth/drive.metadata.readonly'];
+var TOKEN_DIR = (process.env.HOME || process.env.HOMEPATH ||
+    process.env.USERPROFILE) + '/.credentials/';
+var TOKEN_PATH = TOKEN_DIR + 'drive-nodejs-quickstart.json';
+/////////////////////////////////////////////////////////////
 
 var first_company, plus_company;
 var theArray = {
   prospects:[]
 }
+
 var fields = ['company_name', 'full_name', 'title', 'bio'];
 
 converter.on("end_parsed", function (jsonArray) {
 
-  syncLoop(3,
+  syncLoop(2,
 
   function(loop){
-    first_company = jsonArray[loop.iteration()]['Company name'].toLowerCase().replace('llc','').replace('inc','');
-    plus_company = first_company.split(" ").join('+');
-    console.log(plus_company);
+    first_company = jsonArray[loop.iteration()]['Company name'].toLowerCase().replace('llc','').replace('inc','').split(" ").join('+');
+    plus_company = encodeURIComponent(first_company)
 
-    evalStats(plus_company,
+    findLink(plus_company,
     function(){
-      // nightmare.proc.disconnect();
-      // nightmare.ended = true;
-      var nightmare = new Nightmare({show:true})
+      var nightmare = new Nightmare()
       loop.next()
     })
   },
 
   function(){
     exportdata(theArray.prospects, fields);
+    nightmare.proc.disconnect();
+    nightmare.proc.kill();
+    nightmare.ended = true;
     console.log('done')
   })
 
 });
 
-function exportdata(dataSet, headers) {
-  json2csv( { data: dataSet, fields: headers }, function(err, csv) {
-    if (err) console.log(err);
-    fs.writeFile('testexport.csv', csv, function(err) {
-      if (err) throw err;
-      console.log('file saved');
+
+
+
+function findLink(url, callback){
+
+    googleWrap(url, function(bio, profileLink){
+
+      if(!profileLink)
+      {
+        var theObject = {
+          "company_name":first_company.split("+").join(' '),
+          //get domain
+          "full_name": "",
+          "title": "",
+          "bio": ""
+        }
+        theArray.prospects.push(theObject);
+        callback();
+      }
+
+      Promise.resolve(
+        nightmare
+          .useragent("Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36")
+          .goto(profileLink)
+          .wait()
+          .evaluate(function (){
+
+            return {
+              full_name: $('.full-name').text(),
+              title: $('.title').text()
+            }
+
+          }))
+          .then(function(stuff){
+
+            var theObject = {
+              "company_name":first_company.split("+").join(' '),
+              //get domain
+              "full_name": stuff.full_name,
+              "title": stuff.title,
+              "bio": bio
+            }
+            //console.log(theObject)
+            theArray.prospects.push(theObject);
+
+            callback()
+          })
     })
-  });
 }
 
+function googleWrap(daurl, callback){
+  var options = {
+      url:  "https://www.google.ca/search?q=ecommerce+at+"+daurl+"+linkedin",
+      headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.6; rv:1.9.2.16) Gecko/20110319 Firefox/3.6.16'
+      }
+  }
+  setTimeout(function () {
+    request(options, function (err, res, body) {
+            var $ = cheerio.load(body);
+            var checkTitle = []
+            var elem
+            var endselector, bioselector;
+            var bio;
+            var profileLink;
 
-  //TODO: code to check if loggedin
+            $(".f.slp").each(function(n){
+              checkTitle[n] = $(this).text().toLowerCase()
+            })
 
-function evalStats(url, callback){
-    Promise.resolve(nightmare
-          .useragent("Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36")
-            // .goto ('https://www.linkedin.com')
-            // .wait()
-            // .mousedown('.account-toggle.nav-link')
-            // .click('.account-submenu-split-link')
-            // .wait()
-            // .goto('https://www.linkedin.com/')
-            // .wait()
-            // .type('#login-email','hona5090@mylaurier.ca')
-            // .type('#login-password','Hirads12')
-            // .type('document', '\u000d')
-            // .wait()
-          .goto('https://www.linkedin.com/vsearch/f?type=all&keywords=ecommerce+at+'+url)
-          .wait()
-          .evaluate(function(){
-            var full_name = [];
-            var title = [];
-
-            if($('.title.main-headline').length >0 ) {
-
-              $('.title.main-headline').each(function(i, elem) {
-                full_name[i] = $(this).text();
-              });
-              //where description is title
-              $('.description').each(function(i, elem)
+            for (var i = 0; i < checkTitle.length; i ++)
+            {
+              if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && (checkTitle[i].indexOf(first_company.split("+").join(' ').replace("\’", "\'")) > -1))
               {
-                title[i] = $(this).text();
-              });
 
-              //if(title[i].search(url) == 1)
-              return {
-                  full_name: full_name[0],
-                  title: title[1]
+                baseselector =".f.slp:eq("+i+")";
+
+                bio = find($, baseselector).parent().children().first().children().first().text()
+                elem = find($, baseselector).parent().parent().children().first().children().attr('href')
+                profileLink = find($, baseselector).parent().parent().children().first().children().attr('href').substring(7, elem.indexOf('&'))
+
+                break;
               }
 
-          }
-            else return;
-          }))
-
-          .then(function(stuff){
-                console.log(stuff)
-                if(stuff)
-                {
-                  getBio(stuff, function(){
-                    callback()
-                  })
-                }
-                else callback()
-          })
-}
-
-function getBio(data, callback){
-    Promise.resolve(nightmare
-      .click('.title.main-headline')
-      .wait()
-      .evaluate(function () {
-        var bio = [];
-        if($('.view-public-profile').length >0 )
-        {
-          $('.view-public-profile').each(function(i, elem) {
-            bio[0] = $(this).text();
-          });
-          return bio[0]
-        }
-      }))
-    .then(function(result){
-        console.log(result)
-
-          var theObject = {
-            "company_name":first_company,
-            "full_name": data.full_name,
-            "title": data.title,
-            "bio": result
-          }
-          theArray.prospects.push(theObject);
-
-        callback()
+            }
+            callback(bio, profileLink)
     })
-}
+  }, 9000)
+
+ }
+
+ function exportdata(dataSet, headers) {
+   json2csv( { data: dataSet, fields: headers }, function(err, csv) {
+     if (err) console.log(err);
+     fs.writeFile('demandexport.csv', csv, function(err) {
+       if (err) throw err;
+       console.log('file saved');
+     })
+   });
+ }
 
 function syncLoop(iterations, process, exit){
     var index = 0,

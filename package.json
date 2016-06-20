@@ -8,6 +8,8 @@
     "cheerio-eq": "latest",
     "csvtojson": "latest",
     "fs": "latest",
+    "google-auth-library": "^0.9.8",
+    "googleapis": "^8.2.0",
     "json2csv": "^3.4.2",
     "nightmare": "latest",
     "q": "^1.4.1",
@@ -16,6 +18,9 @@
   "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "engines": {
+    "node": "v5.7.0"
   },
   "repository": {
     "type": "git",
