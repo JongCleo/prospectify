@@ -8,8 +8,4 @@ npm install segmentio/nightmare
 Xvfb -ac -screen scrn 1280x2000x24 :9.0 &
 export DISPLAY=:9.0
 
-# Test it
-apt-get install vim
-vim index.js
-# <paste in example>
-node index.js
+node app.js
