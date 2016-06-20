@@ -144,6 +144,7 @@ function googleWrap(daurl, callback){
 
   setTimeout(function () {
     request(options, function (err, res, body) {
+      console.log(body)
             var $ = cheerio.load(body);
             var checkTitle = []
             var elem
