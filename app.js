@@ -13,7 +13,7 @@ var fs = require('fs');
 
 var Converter = require("csvtojson").Converter;
 var converter = new Converter({});
-require("fs").createReadStream("magneto.csv").pipe(converter);
+require("fs").createReadStream("demand.csv").pipe(converter);
 
 var readline = require('readline');
 var google = require('googleapis');
@@ -36,7 +36,7 @@ var fields = ['company_name', 'full_name', 'title', 'bio'];
 
 converter.on("end_parsed", function (jsonArray) {
 
-  syncLoop(3,
+  syncLoop(5,
 
   function(loop){
     first_company = jsonArray[loop.iteration()]['Company name'].toLowerCase().replace('llc','').replace('inc','').split(" ").join('+');
@@ -212,7 +212,7 @@ function googleWrap(daurl, callback){
  function exportdata(dataSet, headers) {
    json2csv( { data: dataSet, fields: headers }, function(err, csv) {
      if (err) console.log(err);
-     fs.writeFile('magentoexport.csv', csv, function(err) {
+     fs.writeFile('demandexport.csv', csv, function(err) {
        if (err) throw err;
        console.log('file saved');
      })
@@ -336,7 +336,7 @@ function uploadFile(auth){
   };
   var media = {
     mimeType: 'text/csv',
-    body: fs.createReadStream('magentoexport.csv')
+    body: fs.createReadStream('demandexport.csv')
   };
   drive.files.create({
      resource: fileMetadata,
