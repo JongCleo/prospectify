@@ -7,6 +7,7 @@
     "cheerio": "latest",
     "cheerio-eq": "latest",
     "csvtojson": "latest",
+    "electron-prebuilt": "^0.37.7",
     "fs": "latest",
     "google-auth-library": "^0.9.8",
     "googleapis": "^8.2.0",
@@ -14,7 +15,7 @@
     "nightmare": "latest",
     "q": "^1.4.1",
     "request": "^2.72.0",
-    "xvfb": "latest"
+    "xvfb": "^0.2.3"
   },
   "devDependencies": {},
   "scripts": {
