@@ -2,7 +2,9 @@
 Streamlining the process of finding a contact from a prospect company.
 
 Usage Steps
+
 1. Download node.js
+
 2. cd into prospectify
 3. Run 'npm install'
 4. Drag and drop your csv file into the prospectify folder
