@@ -13,7 +13,6 @@ var fs = require('fs');
 
 var Converter = require("csvtojson").Converter;
 var converter = new Converter({});
-require("fs").createReadStream("demand.csv").pipe(converter);
 
 var readline = require('readline');
 var google = require('googleapis');
@@ -32,8 +31,10 @@ var theArray = {
   prospects:[]
 }
 
+var fileName = "test"
 var fields = ['company_name', 'full_name', 'title', 'bio'];
 
+require("fs").createReadStream(fileName+".csv").pipe(converter);
 converter.on("end_parsed", function (jsonArray) {
   syncLoop(jsonArray.length,
 
@@ -211,7 +212,7 @@ function googleWrap(daurl, callback){
  function exportdata(dataSet, headers) {
    json2csv( { data: dataSet, fields: headers }, function(err, csv) {
      if (err) console.log(err);
-     fs.writeFile('demandexport.csv', csv, function(err) {
+     fs.writeFile(fileName+'export.csv', csv, function(err) {
        if (err) throw err;
        console.log('file saved');
      })
@@ -330,12 +331,12 @@ function uploadFile(auth){
 
   /// convert csv to google spread spreadsheet
   var fileMetadata = {
-    'name': 'MagentoCsv',
+    'name': fileName+'Csv',
     'mimeType': 'application/vnd.google-apps.spreadsheet'
   };
   var media = {
     mimeType: 'text/csv',
-    body: fs.createReadStream('demandexport.csv')
+    body: fs.createReadStream(fileName+'export.csv')
   };
   drive.files.create({
      resource: fileMetadata,
