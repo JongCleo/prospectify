@@ -1,11 +1,7 @@
 //Web scraping dependencies
 var Nightmare = require('nightmare'),
     Promise = require('q').Promise;
-var nightmare = new Nightmare({
-  electronPath: require('electron-prebuilt')
-});
-var Xvfb = require('xvfb');
-var xvfb = new Xvfb();
+var nightmare = new Nightmare();
 
 var request = require('request');
 request = request.defaults();
@@ -39,7 +35,6 @@ var theArray = {
 var fields = ['company_name', 'full_name', 'title', 'bio'];
 
 converter.on("end_parsed", function (jsonArray) {
-  xvfb.startSync();
   syncLoop(jsonArray.length,
 
   function(loop){
@@ -48,9 +43,7 @@ converter.on("end_parsed", function (jsonArray) {
 
     findLink(plus_company,
     function(){
-      var nightmare = new Nightmare({
-        electronPath: require('electron-prebuilt')
-      })
+      var nightmare = new Nightmare();
       loop.next()
     })
   },
@@ -70,7 +63,6 @@ converter.on("end_parsed", function (jsonArray) {
     nightmare.proc.disconnect();
     nightmare.proc.kill();
     nightmare.ended = true;
-    xvfb.stopSync();
     console.log('done')
   })
 

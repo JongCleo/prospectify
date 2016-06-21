@@ -1,1 +1,1 @@
-xvfb-run -a node --harmony app.js
+web: node app.js
