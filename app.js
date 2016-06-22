@@ -1,7 +1,11 @@
 //Web scraping dependencies
 var Nightmare = require('nightmare'),
     Promise = require('q').Promise;
-var nightmare = new Nightmare();
+var nightmare = new Nightmare(
+  {
+    show:true,
+    openDevTools: true
+  });
 
 var request = require('request');
 request = request.defaults();
@@ -31,7 +35,7 @@ var theArray = {
   prospects:[]
 }
 
-var fileName = "test"
+var fileName = "magento2"
 var fields = ['company_name', 'full_name', 'title', 'bio'];
 
 require("fs").createReadStream(fileName+".csv").pipe(converter);
@@ -41,10 +45,13 @@ converter.on("end_parsed", function (jsonArray) {
   function(loop){
     first_company = jsonArray[loop.iteration()]['Company name'].toLowerCase().replace('llc','').replace('inc','').split(" ").join('+');
     plus_company = encodeURIComponent(first_company)
-
     findLink(plus_company,
     function(){
-      var nightmare = new Nightmare();
+      var nightmare = new Nightmare(
+        {
+          show:true,
+          openDevTools: true
+        });
       loop.next()
     })
   },
@@ -85,8 +92,8 @@ function findLink(url, callback){
         }
         theArray.prospects.push(theObject);
         callback();
+        return
       }
-
       Promise.resolve(
         nightmare
           .useragent("Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36")
@@ -161,10 +168,9 @@ function googleWrap(daurl, callback){
               {
 
                 baseselector =".f.slp:eq("+i+")";
-
                 bio = find($, baseselector).parent().children().first().children().first().text()
                 elem = find($, baseselector).parent().parent().children().first().children().attr('href')
-                profileLink = find($, baseselector).parent().parent().children().first().children().attr('href').substring(7, elem.indexOf('&'))
+                profileLink = decodeURIComponent(find($, baseselector).parent().parent().children().first().children().attr('href').substring(7, elem.indexOf('&')))
 
                 break;
               }
@@ -192,7 +198,7 @@ function googleWrap(daurl, callback){
 
                           bio = find($, baseselector).parent().children().first().children().first().text()
                           elem = find($, baseselector).parent().parent().children().first().children().attr('href')
-                          profileLink = find($, baseselector).parent().parent().children().first().children().attr('href').substring(7, elem.indexOf('&'))
+                          profileLink = decodeURIComponent(find($, baseselector).parent().parent().children().first().children().attr('href').substring(7, elem.indexOf('&')))
 
                           break;
                         }
@@ -205,7 +211,7 @@ function googleWrap(daurl, callback){
 
 
 
-  }, 9000)
+  }, 5000)
 
  }
 
