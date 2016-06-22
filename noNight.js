@@ -1,5 +1,11 @@
 //Web scraping dependencies
 var Promise = require('q').Promise;
+var express = require('express');
+var app = express();
+
+// set the port of our application
+// process.env.PORT lets the port be set by Heroku
+var port = process.env.PORT || 8080;
 
 var request = require('request');
 request = request.defaults();
@@ -31,6 +37,10 @@ var theArray = {
 
 var fileName = "magento1"
 var fields = ['company_name', 'full_name', 'title', 'bio'];
+
+app.listen(port, function() {
+    console.log('Our app is running on http://localhost:' + port);
+});
 
 require("fs").createReadStream(fileName+".csv").pipe(converter);
 converter.on("end_parsed", function (jsonArray) {
