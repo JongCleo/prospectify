@@ -67,10 +67,10 @@ converter.on("end_parsed", function (jsonArray) {
       // Authorize a client with the loaded credentials, then call the
       // Drive API.
       authorize(JSON.parse(content), uploadFile);
+      console.log('done')
+      process.exit()
     });
-    console.log('done')
   })
-
 });
 
 function googleWrap(googleUrl, callback){
@@ -157,7 +157,6 @@ function googleWrap(googleUrl, callback){
               "bio": bio
             }
             theArray.prospects.push(theObject);
-            console.log(theObject)
             callback()
     })
 
