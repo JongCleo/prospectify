@@ -35,7 +35,7 @@ var theArray = {
   prospects:[]
 }
 
-var fileName = "magento1"
+var fileName = "prospect_list_magento"
 var fields = ['company_name', 'full_name', 'title', 'bio'];
 
 app.listen(port, function() {
@@ -47,8 +47,8 @@ converter.on("end_parsed", function (jsonArray) {
   syncLoop(jsonArray.length,
 
   function(loop){
-    first_company = jsonArray[loop.iteration()]['Company name'].toLowerCase().replace('llc','').replace('inc','').split(" ").join('+');
-    plus_company = encodeURIComponent(first_company)
+    first_company = jsonArray[loop.iteration()]['Company name'];
+    plus_company = encodeURIComponent(first_company.toLowerCase().replace('llc','').replace('inc','').split(" ").join('+'))
 
     googleWrap(plus_company,
     function(){
@@ -73,34 +73,38 @@ converter.on("end_parsed", function (jsonArray) {
 
 });
 
-function googleWrap(daurl, callback){
+function googleWrap(googleUrl, callback){
   var options = {
-      url:  "https://www.google.ca/search?q=ecommerce+at+"+daurl+"+linkedin",
+      url:  "https://www.google.ca/search?q=ecommerce+at+"+googleUrl+"+linkedin",
       headers: {
           'User-Agent': 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.6; rv:1.9.2.16) Gecko/20110319 Firefox/3.6.16'
       }
   }
 
   var options2 = {
-      url:  "https://www.google.ca/search?q=marketing+at+"+daurl+"+linkedin",
+      url:  "https://www.google.ca/search?q=marketing+at+"+googleUrl+"+linkedin",
       headers: {
           'User-Agent': 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.6; rv:1.9.2.16) Gecko/20110319 Firefox/3.6.16'
       }
   }
 
   setTimeout(function () {
+
+    // get the bio, name and title
     request(options, function (err, res, body) {
             var $ = cheerio.load(body);
-            var checkTitle = []
+            var checkTitle = [], description = [];
             var elem, bio, profileLink, baseselector, title, full_name;
 
             $(".f.slp").each(function(n){
               checkTitle[n] = $(this).text().toLowerCase()
+              description[n] = $(this).parent().find('span').text().toLowerCase()
             })
-
+            console.log(first_company)
             for (var i = 0; i < checkTitle.length; i ++)
             {
-              if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && (checkTitle[i].indexOf(first_company.split("+").join(' ').replace("\’", "\'")) > -1))
+              if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && ((checkTitle[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1)
+              || (description[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1)))
               {
 
                 baseselector =".f.slp:eq("+i+")";
@@ -117,16 +121,19 @@ function googleWrap(daurl, callback){
             if(!profileLink){
               request(options2, function (err, res, body) {
                       var $ = cheerio.load(body);
-                      var checkTitle = []
+                      var checkTitle = [], description = [];
                       var elem, bio, profileLink, baseselector, title, full_name;
 
                       $(".f.slp").each(function(n){
                         checkTitle[n] = $(this).text().toLowerCase()
+                        description[n] = $(this).parent().find('span').text().toLowerCase()
                       })
 
+                      console.log(first_company);
                       for (var i = 0; i < checkTitle.length; i ++)
                       {
-                        if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && (checkTitle[i].indexOf(first_company.split("+").join(' ').replace("\’", "\'")) > -1))
+                        if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && ((checkTitle[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1)
+                        || (description[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1)))
                         {
 
                           baseselector =".f.slp:eq("+i+")";
