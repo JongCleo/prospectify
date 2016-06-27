@@ -30,6 +30,8 @@ var googleAuth = require('google-auth-library');
 var SCOPES = ['https://www.googleapis.com/auth/drive.file'];
 var TOKEN_DIR = '.credentials/';
 var TOKEN_PATH = TOKEN_DIR + 'drive-nodejs-app.json';
+var EMAIL_KEY = '2206f2d9f60d5e3e4420533c5df5bbb2f80aaa1f'
+var BING_KEY ='br_35635_a286273c577861ff85f1c384cdff615c40f7be27'
 /////////////////////////////////////////////////////////////
 
 var first_company, plus_company;
@@ -38,7 +40,7 @@ var theArray = {
 }
 
 var fileName = "test"
-var fields = ['company_name', 'first_name',"last_name", 'domain', 'title', 'bio'];
+var fields = ['company_name', 'first_name',"last_name", 'domain', 'title', 'bio','email'];
 
 app.listen(port, function() {
     console.log('Our app is running on http://localhost:' + port);
@@ -102,7 +104,7 @@ function googleWrap(googleUrl, callback){
               checkTitle[n] = $(this).text().toLowerCase()
               description[n] = $(this).parent().find('span').text().toLowerCase()
             })
-            console.log(first_company)
+
             for (var i = 0; i < checkTitle.length; i ++)
             {
               if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && ((checkTitle[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1)
@@ -113,7 +115,7 @@ function googleWrap(googleUrl, callback){
 
                 bio = find($, baseselector).parent().children().first().children().first().text()
                 elem = find($, baseselector).parent().parent().children().first().children().text()
-                full_name = find($, baseselector).parent().parent().children().first().children().text().substring(0, elem.indexOf('|'))
+                full_name = find($, baseselector).parent().parent().children().first().children().text().substring(0, elem.indexOf(' |'))
                 title = find($, baseselector).text()
 
                 break;
@@ -131,7 +133,6 @@ function googleWrap(googleUrl, callback){
                         description[n] = $(this).parent().find('span').text().toLowerCase()
                       })
 
-                      console.log(first_company);
                       for (var i = 0; i < checkTitle.length; i ++)
                       {
                         if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && ((checkTitle[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1)
@@ -142,7 +143,7 @@ function googleWrap(googleUrl, callback){
 
                           bio = find($, baseselector).parent().children().first().children().first().text()
                           elem = find($, baseselector).parent().parent().children().first().children().text()
-                          full_name = find($, baseselector).parent().parent().children().first().children().text().substring(0, elem.indexOf('|'))
+                          full_name = find($, baseselector).parent().parent().children().first().children().text().substring(0, elem.indexOf(' |'))
                           title = find($, baseselector).text()
 
                           break;
@@ -151,25 +152,51 @@ function googleWrap(googleUrl, callback){
               })
             }
 
+            if(!full_name){
+              var theObject = {
+                "company_name":first_company.split("+").join(' '),
+                "first_name": "",
+                "last_name": "",
+                "domain": "",
+                "title": "",
+                "bio": "",
+                "email":""
+              }
+              theArray.prospects.push(theObject);
+              callback()
+              return
+            }
+
             blockspring.runParsed("web-search-top-result-bing",
             {
               "search_query": first_company.split("+").join(' '),
               "host_only": false
             },
             {
-             api_key: "br_35635_a286273c577861ff85f1c384cdff615c40f7be27"
+             api_key: BING_KEY
             }, function(res) {
 
               var theObject = {
                 "company_name":first_company.split("+").join(' '),
                 "first_name": full_name.split(' ').slice(0, -1).join(' '),
                 "last_name": full_name.split(' ').slice(-1).join(' '),
-                "domain": res.params.results,
+                "domain": res.params.results.replace('http://','').replace('https://','').replace('www.','').split(/[/?#]/)[0],
                 "title": title,
                 "bio": bio
               }
-              theArray.prospects.push(theObject);
-              callback()
+              console.log(theObject)
+
+              request('https://api.emailhunter.co/v1/generate?domain='+theObject.domain+'&?company='+theObject.company_name+'&first_name='+theObject.first_name+'&last_name='+theObject.last_name+'&api_key='+EMAIL_KEY, function(error, response, body){
+                var stuff = JSON.parse(body);
+                if (stuff.status == 'success'){
+                  theObject.email = stuff.email
+                }
+                else {
+                  theObject.email = "";
+                }
+                theArray.prospects.push(theObject);
+                callback()
+              });
             });
     })
 
