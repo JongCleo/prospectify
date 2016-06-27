@@ -1,11 +1,13 @@
 //Web scraping dependencies
-var Nightmare = require('nightmare'),
-    Promise = require('q').Promise;
-var nightmare = new Nightmare(
-  {
-    show:true,
-    openDevTools: true
-  });
+var Promise = require('q').Promise;
+var express = require('express');
+var app = express();
+
+var blockspring = require("blockspring");
+
+// set the port of our application
+// process.env.PORT lets the port be set by Heroku
+var port = process.env.PORT || 8080;
 
 var request = require('request');
 request = request.defaults();
@@ -35,23 +37,23 @@ var theArray = {
   prospects:[]
 }
 
-var fileName = "magento2"
-var fields = ['company_name', 'full_name', 'title', 'bio'];
+var fileName = "test"
+var fields = ['company_name', 'first_name',"last_name", 'domain', 'title', 'bio'];
+
+app.listen(port, function() {
+    console.log('Our app is running on http://localhost:' + port);
+});
 
 require("fs").createReadStream(fileName+".csv").pipe(converter);
 converter.on("end_parsed", function (jsonArray) {
   syncLoop(jsonArray.length,
 
   function(loop){
-    first_company = jsonArray[loop.iteration()]['Company name'].toLowerCase().replace('llc','').replace('inc','').split(" ").join('+');
-    plus_company = encodeURIComponent(first_company)
-    findLink(plus_company,
+    first_company = jsonArray[loop.iteration()]['Company name'];
+    plus_company = encodeURIComponent(first_company.toLowerCase().replace('llc','').replace('inc','').split(" ").join('+'))
+
+    googleWrap(plus_company,
     function(){
-      var nightmare = new Nightmare(
-        {
-          show:true,
-          openDevTools: true
-        });
       loop.next()
     })
   },
@@ -67,110 +69,52 @@ converter.on("end_parsed", function (jsonArray) {
       // Authorize a client with the loaded credentials, then call the
       // Drive API.
       authorize(JSON.parse(content), uploadFile);
+      console.log('done')
+      process.exit()
     });
-    nightmare.proc.disconnect();
-    nightmare.proc.kill();
-    nightmare.ended = true;
-    console.log('done')
   })
-
 });
 
-
-function findLink(url, callback){
-
-    googleWrap(url, function(bio, profileLink){
-
-      if(!profileLink)
-      {
-        var theObject = {
-          "company_name":first_company.split("+").join(' '),
-          //get domain
-          "full_name": "",
-          "title": "",
-          "bio": ""
-        }
-        theArray.prospects.push(theObject);
-        callback();
-        return
-      }
-      Promise.resolve(
-        nightmare
-          .useragent("Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.111 Safari/537.36")
-          .goto(profileLink)
-          .wait()
-          .evaluate(function (){
-
-            if  (!$('.full-name'))
-            {
-              return {
-                full_name: "page not found",
-                title: "page not found"
-              }
-            }
-            else {
-              return {
-                full_name: $('.full-name').text(),
-                title: $('.title').text()
-              }
-            }
-
-          }))
-          .then(function(stuff){
-
-            var theObject = {
-              "company_name":first_company.split("+").join(' '),
-              //get domain
-              "full_name": stuff.full_name,
-              "title": stuff.title,
-              "bio": bio
-            }
-            //console.log(theObject)
-            console.log(theObject)
-            theArray.prospects.push(theObject);
-
-            callback()
-          })
-    })
-}
-
-function googleWrap(daurl, callback){
+function googleWrap(googleUrl, callback){
   var options = {
-      url:  "https://www.google.ca/search?q=ecommerce+at+"+daurl+"+linkedin",
+      url:  "https://www.google.ca/search?q=ecommerce+at+"+googleUrl+"+linkedin",
       headers: {
           'User-Agent': 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.6; rv:1.9.2.16) Gecko/20110319 Firefox/3.6.16'
       }
   }
 
   var options2 = {
-      url:  "https://www.google.ca/search?q=marketing+at+"+daurl+"+linkedin",
+      url:  "https://www.google.ca/search?q=marketing+at+"+googleUrl+"+linkedin",
       headers: {
           'User-Agent': 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.6; rv:1.9.2.16) Gecko/20110319 Firefox/3.6.16'
       }
   }
 
   setTimeout(function () {
+
+    // get the bio, name and title
     request(options, function (err, res, body) {
             var $ = cheerio.load(body);
-            var checkTitle = []
-            var elem
-            var endselector, bioselector;
-            var bio;
-            var profileLink;
+            var checkTitle = [], description = [];
+            var elem, bio, profileLink, baseselector, title, full_name;
 
             $(".f.slp").each(function(n){
               checkTitle[n] = $(this).text().toLowerCase()
+              description[n] = $(this).parent().find('span').text().toLowerCase()
             })
-
+            console.log(first_company)
             for (var i = 0; i < checkTitle.length; i ++)
             {
-              if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && (checkTitle[i].indexOf(first_company.split("+").join(' ').replace("\’", "\'")) > -1))
+              if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && ((checkTitle[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1)
+              || (description[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1)))
               {
 
                 baseselector =".f.slp:eq("+i+")";
+
                 bio = find($, baseselector).parent().children().first().children().first().text()
-                elem = find($, baseselector).parent().parent().children().first().children().attr('href')
-                profileLink = decodeURIComponent(find($, baseselector).parent().parent().children().first().children().attr('href').substring(7, elem.indexOf('&')))
+                elem = find($, baseselector).parent().parent().children().first().children().text()
+                full_name = find($, baseselector).parent().parent().children().first().children().text().substring(0, elem.indexOf('|'))
+                title = find($, baseselector).text()
 
                 break;
               }
@@ -179,39 +123,57 @@ function googleWrap(daurl, callback){
             if(!profileLink){
               request(options2, function (err, res, body) {
                       var $ = cheerio.load(body);
-                      var checkTitle = []
-                      var elem
-                      var endselector, bioselector;
-                      var bio;
-                      var profileLink;
+                      var checkTitle = [], description = [];
+                      var elem, bio, profileLink, baseselector, title, full_name;
 
                       $(".f.slp").each(function(n){
                         checkTitle[n] = $(this).text().toLowerCase()
+                        description[n] = $(this).parent().find('span').text().toLowerCase()
                       })
 
+                      console.log(first_company);
                       for (var i = 0; i < checkTitle.length; i ++)
                       {
-                        if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && (checkTitle[i].indexOf(first_company.split("+").join(' ').replace("\’", "\'")) > -1))
+                        if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && ((checkTitle[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1)
+                        || (description[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1)))
                         {
 
                           baseselector =".f.slp:eq("+i+")";
 
                           bio = find($, baseselector).parent().children().first().children().first().text()
-                          elem = find($, baseselector).parent().parent().children().first().children().attr('href')
-                          profileLink = decodeURIComponent(find($, baseselector).parent().parent().children().first().children().attr('href').substring(7, elem.indexOf('&')))
+                          elem = find($, baseselector).parent().parent().children().first().children().text()
+                          full_name = find($, baseselector).parent().parent().children().first().children().text().substring(0, elem.indexOf('|'))
+                          title = find($, baseselector).text()
 
                           break;
                         }
-
                       }
               })
             }
-            callback(bio, profileLink)
+
+            blockspring.runParsed("web-search-top-result-bing",
+            {
+              "search_query": first_company.split("+").join(' '),
+              "host_only": false
+            },
+            {
+             api_key: "br_35635_a286273c577861ff85f1c384cdff615c40f7be27"
+            }, function(res) {
+
+              var theObject = {
+                "company_name":first_company.split("+").join(' '),
+                "first_name": full_name.split(' ').slice(0, -1).join(' '),
+                "last_name": full_name.split(' ').slice(-1).join(' '),
+                "domain": res.params.results,
+                "title": title,
+                "bio": bio
+              }
+              theArray.prospects.push(theObject);
+              callback()
+            });
     })
 
-
-
-  }, 5000)
+  }, 9000)
 
  }
 
@@ -337,7 +299,7 @@ function uploadFile(auth){
 
   /// convert csv to google spread spreadsheet
   var fileMetadata = {
-    'name': fileName+'Csv',
+    'name': fileName,
     'mimeType': 'application/vnd.google-apps.spreadsheet'
   };
   var media = {

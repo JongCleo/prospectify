@@ -4,6 +4,7 @@
   "description": "Streamlining the process of finding a contact from a prospect company.",
   "main": "app.js",
   "dependencies": {
+    "blockspring": "0.0.6",
     "cheerio": "latest",
     "cheerio-eq": "latest",
     "csvtojson": "latest",
