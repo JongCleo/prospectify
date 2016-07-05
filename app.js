@@ -1,25 +1,27 @@
-//Web scraping dependencies
-var Promise = require('q').Promise;
+// Talking to front end
 var express = require('express');
 var app = express();
-
-var blockspring = require("blockspring");
+var path = require('path');
+var formidable = require('formidable');
+var fs = require('fs');
 
 // set the port of our application
 // process.env.PORT lets the port be set by Heroku
 var port = process.env.PORT || 8080;
 
+// DOM Element Scraping
 var request = require('request');
 request = request.defaults();
 var cheerio = require("cheerio");
 var find = require('cheerio-eq');
+var blockspring = require("blockspring");
 
+// Parsing between JSON and CSVs
 var json2csv = require('json2csv');
-var fs = require('fs');
-
 var Converter = require("csvtojson").Converter;
 var converter = new Converter({});
 
+// Google Drive Upload
 var readline = require('readline');
 var google = require('googleapis');
 var googleAuth = require('google-auth-library');
@@ -39,42 +41,78 @@ var theArray = {
   prospects:[]
 }
 
-var fileName = "test"
+var fileName = "test";
 var fields = ['company_name', 'first_name',"last_name", 'domain', 'title', 'bio','email'];
 
-app.listen(port, function() {
-    console.log('Our app is running on http://localhost:' + port);
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.get('/', function(req, res){
+  res.sendFile(path.join(__dirname, 'views/app.html'));
 });
 
-require("fs").createReadStream(fileName+".csv").pipe(converter);
-converter.on("end_parsed", function (jsonArray) {
-  syncLoop(jsonArray.length,
+app.post('/upload', function(req, res){
 
-  function(loop){
-    first_company = jsonArray[loop.iteration()]['Company name'];
-    plus_company = encodeURIComponent(first_company.toLowerCase().replace('llc','').replace('inc','').split(" ").join('+'))
+  // create an incoming form object
+  var form = new formidable.IncomingForm();
 
-    googleWrap(plus_company,
-    function(){
-      loop.next()
-    })
-  },
+  // specify that we want to allow the user to upload multiple files in a single request
+  form.multiples = true;
 
-  function(){
-    exportdata(theArray.prospects, fields);
-    // Load client secrets from a local file.
-    fs.readFile('client_secret.json', function processClientSecrets(err, content) {
-      if (err) {
-        console.log('Error loading client secret file: ' + err);
-        return;
-      }
-      // Authorize a client with the loaded credentials, then call the
-      // Drive API.
-      authorize(JSON.parse(content), uploadFile);
-      console.log('done')
-      process.exit()
+  // store all uploads in the /uploads directory
+  form.uploadDir = path.join(__dirname, '/uploads');
+
+  // every time a file has been uploaded successfully,
+  // rename it to it's orignal name
+  form.on('file', function(field, file) {
+    fs.rename(file.path, path.join(form.uploadDir, file.name));
+
+    fs.createReadStream(file.name).pipe(converter);
+    converter.on("end_parsed", function (jsonArray) {
+      syncLoop(jsonArray.length,
+
+      function(loop){
+        first_company = jsonArray[loop.iteration()]['Company name'];
+        plus_company = encodeURIComponent(first_company.toLowerCase().replace('llc','').replace('inc','').split(" ").join('+'))
+
+        googleWrap(plus_company,
+        function(){
+          loop.next()
+        })
+      },
+
+      function(){
+        exportdata(theArray.prospects, fields);
+        // Load client secrets from a local file.
+        fs.readFile('client_secret.json', function processClientSecrets(err, content) {
+          if (err) {
+            console.log('Error loading client secret file: ' + err);
+            return;
+          }
+          // Authorize a client with the loaded credentials, then call the
+          // Drive API.
+          authorize(JSON.parse(content), uploadFile);
+        });
+      })
     });
-  })
+  });
+
+  // log any errors that occur
+  form.on('error', function(err) {
+    console.log('An error has occured: \n' + err);
+  });
+
+  // once all the files have been uploaded, send a response to the client
+  form.on('end', function() {
+    res.end('success');
+  });
+
+  // parse the incoming request containing the form data
+  form.parse(req);
+
+});
+
+var server = app.listen(port, function() {
+    console.log('Our app is running on http://localhost:' + port);
 });
 
 function googleWrap(googleUrl, callback){
@@ -344,6 +382,8 @@ function uploadFile(auth){
       console.log(err);
     } else {
       console.log('File Id:' , file.id);
+      console.log('done')
+      process.exit()
     }
   });
 
