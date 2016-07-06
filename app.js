@@ -15,6 +15,7 @@ request = request.defaults();
 var cheerio = require("cheerio");
 var find = require('cheerio-eq');
 var blockspring = require("blockspring");
+var stringSimilarity = require('string-similarity');
 
 // Parsing between JSON and CSVs
 var json2csv = require('json2csv');
@@ -40,6 +41,7 @@ var first_company, plus_company;
 var theArray = {
   prospects:[]
 }
+var regex_var = new RegExp(/(\.[^\.]{0,3})(\.[^\.]{0,2})(\.*$)|(\.[^\.]*)(\.*$)/);
 
 var fileName = "test";
 var fields = ['company_name', 'first_name',"last_name", 'domain', 'title', 'bio','email'];
@@ -71,7 +73,7 @@ app.post('/upload', function(req, res){
       syncLoop(jsonArray.length,
 
       function(loop){
-        first_company = jsonArray[loop.iteration()]['Company name'];
+        first_company = jsonArray[loop.iteration()]['Company name'].replace(regex_var, '').split('.').pop()
         plus_company = encodeURIComponent(first_company.toLowerCase().replace('llc','').replace('inc','').split(" ").join('+'))
 
         googleWrap(plus_company,
@@ -145,8 +147,7 @@ function googleWrap(googleUrl, callback){
 
             for (var i = 0; i < checkTitle.length; i ++)
             {
-              if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && ((checkTitle[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1)
-              || (description[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1)))
+              if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && ((stringSimilarity.compareTwoStrings(checkTitle[i], first_company.toLowerCase()) > 0.6) || (description[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1)))
               {
 
                 baseselector =".f.slp:eq("+i+")";
@@ -173,7 +174,7 @@ function googleWrap(googleUrl, callback){
 
                       for (var i = 0; i < checkTitle.length; i ++)
                       {
-                        if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && ((checkTitle[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1)
+                        if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && ((stringSimilarity.compareTwoStrings(checkTitle[i], first_company.toLowerCase()) > 0.6)
                         || (description[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1)))
                         {
 
