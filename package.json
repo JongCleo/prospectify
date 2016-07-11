@@ -8,6 +8,7 @@
     "cheerio": "latest",
     "cheerio-eq": "latest",
     "csvtojson": "latest",
+    "delivery": "0.0.4",
     "express": "^4.14.0",
     "formidable": "^1.0.17",
     "fs": "latest",

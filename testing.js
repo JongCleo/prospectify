@@ -22,17 +22,7 @@ var json2csv = require('json2csv');
 var Converter = require("csvtojson").Converter;
 var converter = new Converter({});
 
-// Google Drive Upload
-var readline = require('readline');
-var google = require('googleapis');
-var googleAuth = require('google-auth-library');
 //////////////////////////////////////////////////////////
-
-// If modifying these scopes, delete your previously saved credentials
-// at ~/.credentials/drive-nodejs-quickstart.json
-var SCOPES = ['https://www.googleapis.com/auth/drive.file'];
-var TOKEN_DIR = '.credentials/';
-var TOKEN_PATH = TOKEN_DIR + 'drive-nodejs-app.json';
 var EMAIL_KEY = '2206f2d9f60d5e3e4420533c5df5bbb2f80aaa1f'
 var BING_KEY ='br_35635_a286273c577861ff85f1c384cdff615c40f7be27'
 /////////////////////////////////////////////////////////////
@@ -52,7 +42,7 @@ app.get('/', function(req, res){
   res.sendFile(path.join(__dirname, 'views/app.html'));
 });
 
-app.post('/upload', function(req, res){
+app.post('/uploads', function(req, res){
 
   // create an incoming form object
   var form = new formidable.IncomingForm();
@@ -61,13 +51,14 @@ app.post('/upload', function(req, res){
   form.multiples = true;
 
   // store all uploads in the /uploads directory
-  form.uploadDir = path.join(__dirname, '/upload');
+  form.uploadDir = path.join(__dirname, '/uploads');
 
   // every time a file has been uploaded successfully,
   // rename it to it's orignal name
   form.on('file', function(field, file) {
     fs.rename(file.path, path.join(form.uploadDir, file.name));
-    fs.createReadStream('upload/'+file.name).pipe(converter);
+
+    fs.createReadStream(file.name).pipe(converter);
     converter.on("end_parsed", function (jsonArray) {
       syncLoop(jsonArray.length,
 
@@ -83,16 +74,10 @@ app.post('/upload', function(req, res){
 
       function(){
         exportdata(theArray.prospects, fields);
-        // Load client secrets from a local file.
-        fs.readFile('client_secret.json', function processClientSecrets(err, content) {
-          if (err) {
-            console.log('Error loading client secret file: ' + err);
-            return;
-          }
-          // Authorize a client with the loaded credentials, then call the
-          // Drive API.
-          authorize(JSON.parse(content), uploadFile);
-        });
+        app.get('/img/bg.png', function(req, res) {
+            res.sendFile('public/img/background.png')
+        })
+
       })
     });
   });
@@ -201,7 +186,6 @@ function googleWrap(googleUrl, callback){
                 "email":""
               }
               theArray.prospects.push(theObject);
-              console.log(theObject)
               callback()
               return
             }
@@ -284,89 +268,4 @@ function syncLoop(iterations, process, exit){
     };
     loop.next();
     return loop;
-}
-
-/**
- * Create an OAuth2 client with the given credentials, and then execute the
- * given callback function.
- *
- * @param {Object} credentials The authorization client credentials.
- * @param {function} callback The callback to call with the authorized client.
- */
-function authorize(credentials, callback) {
-  var clientSecret = credentials.installed.client_secret;
-  var clientId = credentials.installed.client_id;
-  var redirectUrl = credentials.installed.redirect_uris[0];
-  var auth = new googleAuth();
-  var oauth2Client = new auth.OAuth2(clientId, clientSecret, redirectUrl);
-
-  // Check if we have previously stored a token.
-  fs.readFile(TOKEN_PATH, function(err, token) {
-    if (err) {
-      getNewToken(oauth2Client, callback);
-    } else {
-      oauth2Client.credentials = JSON.parse(token);
-      callback(oauth2Client);
-    }
-  });
-}
-
-/**
- * Get and store new token after prompting for user authorization, and then
- * execute the given callback with the authorized OAuth2 client.
- *
- * @param {google.auth.OAuth2} oauth2Client The OAuth2 client to get token for.
- * @param {getEventsCallback} callback The callback to call with the authorized
- *     client.
- */
-function getNewToken(oauth2Client, callback) {
-  var authUrl = oauth2Client.generateAuthUrl({
-    access_type: 'offline',
-    scope: SCOPES
-  });
-  console.log('Authorize this app by visiting this url: ', authUrl);
-  var rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
-  rl.question('Enter the code from that page here: ', function(code) {
-    rl.close();
-    oauth2Client.getToken(code, function(err, token) {
-      if (err) {
-        console.log('Error while trying to retrieve access token', err);
-        return;
-      }
-      oauth2Client.credentials = token;
-      callback(oauth2Client);
-    });
-  });
-}
-
-function uploadFile(auth){
-  var drive = google.drive('v3');
-
-  /// convert csv to google spread spreadsheet
-  var fileMetadata = {
-    'name': fileName,
-    'mimeType': 'application/vnd.google-apps.spreadsheet'
-  };
-  var media = {
-    mimeType: 'text/csv',
-    body: fs.createReadStream(fileName+'export.csv')
-  };
-  drive.files.create({
-     resource: fileMetadata,
-     media: media,
-     fields: 'id',
-     auth: auth
-  }, function(err, file) {
-    if(err) {
-      // Handle error
-      console.log(err);
-    } else {
-      console.log('File Id:' , file.id);
-      console.log('done')
-    }
-  });
-
 }
