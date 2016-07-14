@@ -146,7 +146,7 @@ function googleWrap(googleUrl, callback){
 
             for (var i = 0; i < checkTitle.length; i ++)
             {
-              if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && ((stringSimilarity.compareTwoStrings(checkTitle[i], first_company.toLowerCase()) > 0.6) || (description[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1)))
+              if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("CEO") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && ((stringSimilarity.compareTwoStrings(checkTitle[i].substring(checkTitle[i].lastIndexOf('-')+3).replace(/\./g, ''), first_company.toLowerCase()) > 0.4) || (description[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1)))
               {
 
                 baseselector =".f.slp:eq("+i+")";
@@ -160,7 +160,7 @@ function googleWrap(googleUrl, callback){
               }
             }
 
-            if(!profileLink){
+            if(!title){
               request(options2, function (err, res, body) {
                       var $ = cheerio.load(body);
                       var checkTitle = [], description = [];
@@ -173,7 +173,7 @@ function googleWrap(googleUrl, callback){
 
                       for (var i = 0; i < checkTitle.length; i ++)
                       {
-                        if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && ((stringSimilarity.compareTwoStrings(checkTitle[i], first_company.toLowerCase()) > 0.6)
+                        if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && ((stringSimilarity.compareTwoStrings(checkTitle[i].substring(checkTitle[i].lastIndexOf('-')+3).replace(/\./g, ''), first_company.toLowerCase()) > 0.4)
                         || (description[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1)))
                         {
 
@@ -215,27 +215,67 @@ function googleWrap(googleUrl, callback){
              api_key: BING_KEY
             }, function(res) {
 
-              var theObject = {
-                "company_name":first_company.split("+").join(' '),
-                "first_name": full_name.split(' ').slice(0, -1).join(' '),
-                "last_name": full_name.split(' ').slice(-1).join(' '),
-                "domain": res.params.results.replace('http://','').replace('https://','').replace('www.','').split(/[/?#]/)[0],
-                "title": title,
-                "bio": bio
-              }
-              console.log(theObject)
+              if(!res.params.results){
+                var theObject = {
+                  "company_name":first_company.split("+").join(' '),
+                  "first_name": full_name.split(' ').slice(0, -1).join(' '),
+                  "last_name": full_name.split(' ').slice(-1).join(' '),
+                  "domain": "",
+                  "title": title,
+                  "bio": bio
+                }
+                request('https://api.emailhunter.co/v1/generate?company='+theObject.company_name+'&first_name='+encodeURIComponent(theObject.first_name)+'&last_name='+encodeURIComponent(theObject.last_name)+'&api_key='+EMAIL_KEY, function(error, response, body){
 
-              request('https://api.emailhunter.co/v1/generate?domain='+theObject.domain+'&?company='+theObject.company_name+'&first_name='+theObject.first_name+'&last_name='+theObject.last_name+'&api_key='+EMAIL_KEY, function(error, response, body){
-                var stuff = JSON.parse(body);
-                if (stuff.status == 'success'){
-                  theObject.email = stuff.email
+                  if(body.indexOf("<html>")>-1){
+                    theObject.email = "";
+                  }
+                  else{
+                    var stuff = JSON.parse(body);
+
+                    if (stuff.status == 'success'){
+                      theObject.email = stuff.email
+                    }
+                    else {
+                      theObject.email = "";
+                    }
+                  }
+
+                  theArray.prospects.push(theObject);
+                  callback()
+                  console.log(theObject)
+                });
+              }
+              else{
+                var theObject = {
+                  "company_name":first_company.split("+").join(' '),
+                  "first_name": full_name.split(' ').slice(0, -1).join(' '),
+                  "last_name": full_name.split(' ').slice(-1).join(' '),
+                  "domain": res.params.results.replace('http://','').replace('https://','').replace('www.','').split(/[/?#]/)[0],
+                  "title": title,
+                  "bio": bio
                 }
-                else {
-                  theObject.email = "";
-                }
-                theArray.prospects.push(theObject);
-                callback()
-              });
+
+                request('https://api.emailhunter.co/v1/generate?domain='+theObject.domain+'&?company='+encodeURIComponent(theObject.company_name)+'&first_name='+encodeURIComponent(theObject.first_name)+'&last_name='+theObject.last_name+'&api_key='+EMAIL_KEY, function(error, response, body){
+
+                  if(body.indexOf("<html>")>-1){
+                    theObject.email = "";
+                  }
+                  else{
+                    var stuff = JSON.parse(body);
+
+                    if (stuff.status == 'success'){
+                      theObject.email = stuff.email
+                    }
+                    else {
+                      theObject.email = "";
+                    }
+                  }
+
+                  theArray.prospects.push(theObject);
+                  callback()
+                  console.log(theObject)
+                });
+              }
             });
     })
 
