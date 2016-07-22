@@ -162,6 +162,24 @@ function googleWrap(googleUrl, callback){
             }
 
             if(!title){
+              for (var i = 0; i < checkTitle.length; i ++)
+              {
+                if( (stringSimilarity.compareTwoStrings(checkTitle[i].substring(checkTitle[i].lastIndexOf('-')+3).replace(/\./g, ''), first_company.toLowerCase()) > 0.4) || (description[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1) )
+                {
+
+                  baseselector =".f.slp:eq("+i+")";
+
+                  bio = find($, baseselector).parent().children().first().children().first().text()
+                  elem = find($, baseselector).parent().parent().children().first().children().text()
+                  full_name = find($, baseselector).parent().parent().children().first().children().text().substring(0, elem.indexOf(' |'))
+                  title = find($, baseselector).text()
+
+                  break;
+                }
+              }
+            }
+
+            if(!title){
               request(options2, function (err, res, body) {
                       var $ = cheerio.load(body);
                       var checkTitle = [], description = [];
@@ -186,6 +204,24 @@ function googleWrap(googleUrl, callback){
                           title = find($, baseselector).text()
 
                           break;
+                        }
+                      }
+
+                      if(!title){
+                        for (var i = 0; i < checkTitle.length; i ++)
+                        {
+                          if( (stringSimilarity.compareTwoStrings(checkTitle[i].substring(checkTitle[i].lastIndexOf('-')+3).replace(/\./g, ''), first_company.toLowerCase()) > 0.4) || (description[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1) )
+                          {
+
+                            baseselector =".f.slp:eq("+i+")";
+
+                            bio = find($, baseselector).parent().children().first().children().first().text()
+                            elem = find($, baseselector).parent().parent().children().first().children().text()
+                            full_name = find($, baseselector).parent().parent().children().first().children().text().substring(0, elem.indexOf(' |'))
+                            title = find($, baseselector).text()
+
+                            break;
+                          }
                         }
                       }
               })
@@ -305,7 +341,7 @@ function googleWrap(googleUrl, callback){
             });// end of blockspring request
     })
 
-  }, 9000)
+  }, 7000)
 
  }
 
