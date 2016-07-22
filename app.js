@@ -16,6 +16,7 @@ var cheerio = require("cheerio");
 var find = require('cheerio-eq');
 var blockspring = require("blockspring");
 var stringSimilarity = require('string-similarity');
+var wappalyzer = require("wappalyzer");
 
 // Parsing between JSON and CSVs
 var json2csv = require('json2csv');
@@ -44,8 +45,8 @@ var theArray = {
 var regex_var = new RegExp(/(\.[^\.]{0,3})(\.[^\.]{0,2})(\.*$)|(\.[^\.]*)(\.*$)/);
 
 var fileName = "test";
-var fields = ['company_name', 'first_name',"last_name", 'domain', 'title', 'bio','email'];
-
+var fields = ['company_name', 'first_name',"last_name", 'domain', 'title', 'bio','email','platform'];
+var platformList = ['Magento',"Shopify","WooCommerce","Demandware","PrestaShop","OpenCart","Bigcommerce","Volusion","Zen Cart"];
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', function(req, res){
@@ -198,7 +199,8 @@ function googleWrap(googleUrl, callback){
                 "domain": "",
                 "title": "",
                 "bio": "",
-                "email":""
+                "email":"",
+                "platform":""
               }
               theArray.prospects.push(theObject);
               console.log(theObject)
@@ -213,9 +215,9 @@ function googleWrap(googleUrl, callback){
             },
             {
              api_key: BING_KEY
-            }, function(res) {
+           }, function(domainRes) {
 
-              if(!res.params.results){
+              if(!domainRes.params.results){
                 var theObject = {
                   "company_name":first_company.split("+").join(' '),
                   "first_name": full_name.split(' ').slice(0, -1).join(' '),
@@ -228,15 +230,18 @@ function googleWrap(googleUrl, callback){
 
                   if(body.indexOf("<html>")>-1){
                     theObject.email = "";
+                    theObject.platform ="";
                   }
                   else{
                     var stuff = JSON.parse(body);
 
                     if (stuff.status == 'success'){
-                      theObject.email = stuff.email
+                      theObject.email = stuff.email;
+                      theObject.platform ="";
                     }
                     else {
                       theObject.email = "";
+                      theObject.platform ="";
                     }
                   }
 
@@ -246,11 +251,12 @@ function googleWrap(googleUrl, callback){
                 });
               }
               else{
+
                 var theObject = {
                   "company_name":first_company.split("+").join(' '),
                   "first_name": full_name.split(' ').slice(0, -1).join(' '),
                   "last_name": full_name.split(' ').slice(-1).join(' '),
-                  "domain": res.params.results.replace('http://','').replace('https://','').replace('www.','').split(/[/?#]/)[0],
+                  "domain": domainRes.params.results.replace('http://','').replace('https://','').replace('www.','').split(/[/?#]/)[0],
                   "title": title,
                   "bio": bio
                 }
@@ -271,12 +277,32 @@ function googleWrap(googleUrl, callback){
                     }
                   }
 
-                  theArray.prospects.push(theObject);
-                  callback()
-                  console.log(theObject)
-                });
-              }
-            });
+                  var wapOptions = {
+                    url: domainRes.params.results,
+                    hostname: theObject.domain,
+                    debug:false
+                  }
+
+                  wappalyzer.detectFromUrl(wapOptions, function(err,apps,appInfo){
+                    if(err || !apps){
+                      console.log(err)
+                    }
+                    else{
+                      for (var i =0; i<apps.length; i++){
+                        if(platformList.indexOf(apps[i]) >= 0){
+                          theObject.platform = apps[i];
+                          console.log("platform is: "+theObject.platform);
+                          break;
+                        }
+                      }
+                    }
+                    theArray.prospects.push(theObject);
+                    callback()
+                    console.log(theObject)
+                  })// end of wappalyzer request
+                });// end of email hunter request
+              }// end of else clause
+            });// end of blockspring request
     })
 
   }, 9000)
