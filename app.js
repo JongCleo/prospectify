@@ -35,6 +35,7 @@ if (!process.env.CLIENT_ID){
 var CLIENT_ID = process.env.CLIENT_ID || JSON.parse(tokens).installed.client_id;
 var CLIENT_SECRET = process.env.CLIENT_SECRET || JSON.parse(tokens).installed.client_secret;
 var REDIRECT_URL = process.env.REDIRECT_URL || JSON.parse(tokens).installed.redirect_uris[0];
+var SCOPES = ['https://www.googleapis.com/auth/drive.file'];
 var auth = new googleAuth();
 var oauth2Client = new auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URL);
 var authUrl = oauth2Client.generateAuthUrl({
@@ -43,7 +44,6 @@ var authUrl = oauth2Client.generateAuthUrl({
 });
 
 //////////////////////////////////////////////////////////
-var SCOPES = ['https://www.googleapis.com/auth/drive.file'];
 var EMAIL_KEY = '2206f2d9f60d5e3e4420533c5df5bbb2f80aaa1f'
 var BING_KEY ='br_35635_a286273c577861ff85f1c384cdff615c40f7be27'
 /////////////////////////////////////////////////////////////
