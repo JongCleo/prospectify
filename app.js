@@ -34,11 +34,8 @@ if (!process.env.CLIENT_ID){
 
 var CLIENT_ID = process.env.CLIENT_ID || JSON.parse(tokens).installed.client_id;
 var CLIENT_SECRET = process.env.CLIENT_SECRET || JSON.parse(tokens).installed.client_secret;
-var REDIRECT_URL = process.env.CLIENT_SECRET || JSON.parse(tokens).installed.redirect_uris[0];
+var REDIRECT_URL = process.env.REDIRECT_URL || JSON.parse(tokens).installed.redirect_uris[0];
 //////////////////////////////////////////////////////////
-
-// If modifying these scopes, delete your previously saved credentials
-// at ~/.credentials/drive-nodejs-quickstart.json
 var SCOPES = ['https://www.googleapis.com/auth/drive.file'];
 var EMAIL_KEY = '2206f2d9f60d5e3e4420533c5df5bbb2f80aaa1f'
 var BING_KEY ='br_35635_a286273c577861ff85f1c384cdff615c40f7be27'
@@ -56,7 +53,26 @@ var platformList = ['Magento',"Shopify","WooCommerce","Demandware","PrestaShop",
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', function(req, res){
-  res.sendFile(path.join(__dirname, 'views/app.html'));
+  var auth = new googleAuth();
+  var oauth2Client = new auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URL);
+  var authUrl = oauth2Client.generateAuthUrl({
+    access_type: 'offline',
+    scope: SCOPES
+  });
+  res.redirect(authUrl);
+});
+
+app.get('/oauth2callback', function(req, res) {
+  var code = req.query.code;
+  oauth2Client.getToken(code, function(err, token) {
+    if (err) {
+      console.log('Error while trying to retrieve access token', err);
+      return;
+    }
+    oauth2Client.credentials = token;
+    uploadFile(oauth2Client);
+    res.sendFile(path.join(__dirname, 'views/app.html'));
+  });
 });
 
 app.post('/upload', function(req, res){
