@@ -30,11 +30,12 @@ var googleAuth = require('google-auth-library');
 
 if (!process.env.CLIENT_ID){
 	var tokens = fs.readFileSync('./client_secret.json', 'utf8')
+  console.log('asd')
 }
 
-var CLIENT_ID = process.env.CLIENT_ID || JSON.parse(tokens).installed.client_id;
-var CLIENT_SECRET = process.env.CLIENT_SECRET || JSON.parse(tokens).installed.client_secret;
-var REDIRECT_URL = process.env.REDIRECT_URL || JSON.parse(tokens).installed.redirect_uris[0];
+var CLIENT_ID = process.env.CLIENT_ID || JSON.parse(tokens).web.client_id;
+var CLIENT_SECRET = process.env.CLIENT_SECRET || JSON.parse(tokens).web.client_secret;
+var REDIRECT_URL = process.env.REDIRECT_URL || JSON.parse(tokens).web.redirect_uris[0];
 var SCOPES = ['https://www.googleapis.com/auth/drive.file'];
 var auth = new googleAuth();
 var oauth2Client = new auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URL);
