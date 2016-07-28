@@ -16,13 +16,34 @@ var cheerio = require("cheerio");
 var find = require('cheerio-eq');
 var blockspring = require("blockspring");
 var stringSimilarity = require('string-similarity');
+var wappalyzer = require("wappalyzer");
 
 // Parsing between JSON and CSVs
 var json2csv = require('json2csv');
 var Converter = require("csvtojson").Converter;
 var converter = new Converter({});
 
+// Google Drive Upload
+var readline = require('readline');
+var googleAuth = require('google-auth-library');
+
+// Redirect Gdrive
+//Config stuff
+if (!process.env.CLIENT_ID){
+	var tokens = fs.readFileSync('./client_secret.json', 'utf8')
+}
+var CLIENT_ID = JSON.parse(tokens).installed.client_id;
+var CLIENT_SECRET = JSON.parse(tokens).installed.client_secret;
+var google = require('googleapis');
+var OAuth2 = google.auth.OAuth2;
+var oauth2Client = new OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URL);
 //////////////////////////////////////////////////////////
+
+// If modifying these scopes, delete your previously saved credentials
+// at ~/.credentials/drive-nodejs-quickstart.json
+var SCOPES = ['https://www.googleapis.com/auth/drive.file'];
+var TOKEN_DIR = '.credentials/';
+var TOKEN_PATH = TOKEN_DIR + 'drive-nodejs-app.json';
 var EMAIL_KEY = '2206f2d9f60d5e3e4420533c5df5bbb2f80aaa1f'
 var BING_KEY ='br_35635_a286273c577861ff85f1c384cdff615c40f7be27'
 /////////////////////////////////////////////////////////////
@@ -34,15 +55,15 @@ var theArray = {
 var regex_var = new RegExp(/(\.[^\.]{0,3})(\.[^\.]{0,2})(\.*$)|(\.[^\.]*)(\.*$)/);
 
 var fileName = "test";
-var fields = ['company_name', 'first_name',"last_name", 'domain', 'title', 'bio','email'];
-
+var fields = ['company_name', 'first_name',"last_name", 'domain', 'title', 'bio','email','platform'];
+var platformList = ['Magento',"Shopify","WooCommerce","Demandware","PrestaShop","OpenCart","Bigcommerce","Volusion","Zen Cart"];
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', function(req, res){
   res.sendFile(path.join(__dirname, 'views/app.html'));
 });
 
-app.post('/uploads', function(req, res){
+app.post('/upload', function(req, res){
 
   // create an incoming form object
   var form = new formidable.IncomingForm();
@@ -51,14 +72,13 @@ app.post('/uploads', function(req, res){
   form.multiples = true;
 
   // store all uploads in the /uploads directory
-  form.uploadDir = path.join(__dirname, '/uploads');
+  form.uploadDir = path.join(__dirname, '/upload');
 
   // every time a file has been uploaded successfully,
   // rename it to it's orignal name
   form.on('file', function(field, file) {
     fs.rename(file.path, path.join(form.uploadDir, file.name));
-
-    fs.createReadStream(file.name).pipe(converter);
+    fs.createReadStream('upload/'+file.name).pipe(converter);
     converter.on("end_parsed", function (jsonArray) {
       syncLoop(jsonArray.length,
 
@@ -74,10 +94,16 @@ app.post('/uploads', function(req, res){
 
       function(){
         exportdata(theArray.prospects, fields);
-        app.get('/img/bg.png', function(req, res) {
-            res.sendFile('public/img/background.png')
-        })
-
+        // Load client secrets from a local file.
+        fs.readFile('client_secret.json', function processClientSecrets(err, content) {
+          if (err) {
+            console.log('Error loading client secret file: ' + err);
+            return;
+          }
+          // Authorize a client with the loaded credentials, then call the
+          // Drive API.
+          authorize(JSON.parse(content), uploadFile);
+        });
       })
     });
   });
@@ -131,7 +157,7 @@ function googleWrap(googleUrl, callback){
 
             for (var i = 0; i < checkTitle.length; i ++)
             {
-              if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && ((stringSimilarity.compareTwoStrings(checkTitle[i], first_company.toLowerCase()) > 0.6) || (description[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1)))
+              if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("CEO") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && ((stringSimilarity.compareTwoStrings(checkTitle[i].substring(checkTitle[i].lastIndexOf('-')+3).replace(/\./g, ''), first_company.toLowerCase()) > 0.4) || (description[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1)))
               {
 
                 baseselector =".f.slp:eq("+i+")";
@@ -145,7 +171,25 @@ function googleWrap(googleUrl, callback){
               }
             }
 
-            if(!profileLink){
+            if(!title){
+              for (var i = 0; i < checkTitle.length; i ++)
+              {
+                if( (stringSimilarity.compareTwoStrings(checkTitle[i].substring(checkTitle[i].lastIndexOf('-')+3).replace(/\./g, ''), first_company.toLowerCase()) > 0.4) || (description[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1) )
+                {
+
+                  baseselector =".f.slp:eq("+i+")";
+
+                  bio = find($, baseselector).parent().children().first().children().first().text()
+                  elem = find($, baseselector).parent().parent().children().first().children().text()
+                  full_name = find($, baseselector).parent().parent().children().first().children().text().substring(0, elem.indexOf(' |'))
+                  title = find($, baseselector).text()
+
+                  break;
+                }
+              }
+            }
+
+            if(!title){
               request(options2, function (err, res, body) {
                       var $ = cheerio.load(body);
                       var checkTitle = [], description = [];
@@ -158,7 +202,7 @@ function googleWrap(googleUrl, callback){
 
                       for (var i = 0; i < checkTitle.length; i ++)
                       {
-                        if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && ((stringSimilarity.compareTwoStrings(checkTitle[i], first_company.toLowerCase()) > 0.6)
+                        if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && ((stringSimilarity.compareTwoStrings(checkTitle[i].substring(checkTitle[i].lastIndexOf('-')+3).replace(/\./g, ''), first_company.toLowerCase()) > 0.4)
                         || (description[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1)))
                         {
 
@@ -172,6 +216,24 @@ function googleWrap(googleUrl, callback){
                           break;
                         }
                       }
+
+                      if(!title){
+                        for (var i = 0; i < checkTitle.length; i ++)
+                        {
+                          if( (stringSimilarity.compareTwoStrings(checkTitle[i].substring(checkTitle[i].lastIndexOf('-')+3).replace(/\./g, ''), first_company.toLowerCase()) > 0.4) || (description[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1) )
+                          {
+
+                            baseselector =".f.slp:eq("+i+")";
+
+                            bio = find($, baseselector).parent().children().first().children().first().text()
+                            elem = find($, baseselector).parent().parent().children().first().children().text()
+                            full_name = find($, baseselector).parent().parent().children().first().children().text().substring(0, elem.indexOf(' |'))
+                            title = find($, baseselector).text()
+
+                            break;
+                          }
+                        }
+                      }
               })
             }
 
@@ -183,9 +245,11 @@ function googleWrap(googleUrl, callback){
                 "domain": "",
                 "title": "",
                 "bio": "",
-                "email":""
+                "email":"",
+                "platform":""
               }
               theArray.prospects.push(theObject);
+              console.log(theObject)
               callback()
               return
             }
@@ -197,33 +261,97 @@ function googleWrap(googleUrl, callback){
             },
             {
              api_key: BING_KEY
-            }, function(res) {
+           }, function(domainRes) {
 
-              var theObject = {
-                "company_name":first_company.split("+").join(' '),
-                "first_name": full_name.split(' ').slice(0, -1).join(' '),
-                "last_name": full_name.split(' ').slice(-1).join(' '),
-                "domain": res.params.results.replace('http://','').replace('https://','').replace('www.','').split(/[/?#]/)[0],
-                "title": title,
-                "bio": bio
+              if(!domainRes.params.results){
+                var theObject = {
+                  "company_name":first_company.split("+").join(' '),
+                  "first_name": full_name.split(' ').slice(0, -1).join(' '),
+                  "last_name": full_name.split(' ').slice(-1).join(' '),
+                  "domain": "",
+                  "title": title,
+                  "bio": bio
+                }
+                request('https://api.emailhunter.co/v1/generate?company='+theObject.company_name+'&first_name='+encodeURIComponent(theObject.first_name)+'&last_name='+encodeURIComponent(theObject.last_name)+'&api_key='+EMAIL_KEY, function(error, response, body){
+
+                  if(body.indexOf("<html>")>-1){
+                    theObject.email = "";
+                    theObject.platform ="";
+                  }
+                  else{
+                    var stuff = JSON.parse(body);
+
+                    if (stuff.status == 'success'){
+                      theObject.email = stuff.email;
+                      theObject.platform ="";
+                    }
+                    else {
+                      theObject.email = "";
+                      theObject.platform ="";
+                    }
+                  }
+
+                  theArray.prospects.push(theObject);
+                  callback()
+                  console.log(theObject)
+                });
               }
-              console.log(theObject)
+              else{
 
-              request('https://api.emailhunter.co/v1/generate?domain='+theObject.domain+'&?company='+theObject.company_name+'&first_name='+theObject.first_name+'&last_name='+theObject.last_name+'&api_key='+EMAIL_KEY, function(error, response, body){
-                var stuff = JSON.parse(body);
-                if (stuff.status == 'success'){
-                  theObject.email = stuff.email
+                var theObject = {
+                  "company_name":first_company.split("+").join(' '),
+                  "first_name": full_name.split(' ').slice(0, -1).join(' '),
+                  "last_name": full_name.split(' ').slice(-1).join(' '),
+                  "domain": domainRes.params.results.replace('http://','').replace('https://','').replace('www.','').split(/[/?#]/)[0],
+                  "title": title,
+                  "bio": bio
                 }
-                else {
-                  theObject.email = "";
-                }
-                theArray.prospects.push(theObject);
-                callback()
-              });
-            });
+
+                request('https://api.emailhunter.co/v1/generate?domain='+theObject.domain+'&?company='+encodeURIComponent(theObject.company_name)+'&first_name='+encodeURIComponent(theObject.first_name)+'&last_name='+theObject.last_name+'&api_key='+EMAIL_KEY, function(error, response, body){
+
+                  if(body.indexOf("<html>")>-1){
+                    theObject.email = "";
+                  }
+                  else{
+                    var stuff = JSON.parse(body);
+
+                    if (stuff.status == 'success'){
+                      theObject.email = stuff.email
+                    }
+                    else {
+                      theObject.email = "";
+                    }
+                  }
+
+                  var wapOptions = {
+                    url: domainRes.params.results,
+                    hostname: theObject.domain,
+                    debug:false
+                  }
+
+                  wappalyzer.detectFromUrl(wapOptions, function(err,apps,appInfo){
+                    if(err || !apps){
+                      console.log(err)
+                    }
+                    else{
+                      for (var i =0; i<apps.length; i++){
+                        if(platformList.indexOf(apps[i]) >= 0){
+                          theObject.platform = apps[i];
+                          console.log("platform is: "+theObject.platform);
+                          break;
+                        }
+                      }
+                    }
+                    theArray.prospects.push(theObject);
+                    callback()
+                    console.log(theObject)
+                  })// end of wappalyzer request
+                });// end of email hunter request
+              }// end of else clause
+            });// end of blockspring request
     })
 
-  }, 9000)
+  }, 7000)
 
  }
 
@@ -268,4 +396,89 @@ function syncLoop(iterations, process, exit){
     };
     loop.next();
     return loop;
+}
+
+/**
+ * Create an OAuth2 client with the given credentials, and then execute the
+ * given callback function.
+ *
+ * @param {Object} credentials The authorization client credentials.
+ * @param {function} callback The callback to call with the authorized client.
+ */
+function authorize(credentials, callback) {
+  var clientSecret = credentials.installed.client_secret;
+  var clientId = credentials.installed.client_id;
+  var redirectUrl = credentials.installed.redirect_uris[0];
+  var auth = new googleAuth();
+  var oauth2Client = new auth.OAuth2(clientId, clientSecret, redirectUrl);
+
+  // Check if we have previously stored a token.
+  fs.readFile(TOKEN_PATH, function(err, token) {
+    if (err) {
+      getNewToken(oauth2Client, callback);
+    } else {
+      oauth2Client.credentials = JSON.parse(token);
+      callback(oauth2Client);
+    }
+  });
+}
+
+/**
+ * Get and store new token after prompting for user authorization, and then
+ * execute the given callback with the authorized OAuth2 client.
+ *
+ * @param {google.auth.OAuth2} oauth2Client The OAuth2 client to get token for.
+ * @param {getEventsCallback} callback The callback to call with the authorized
+ *     client.
+ */
+function getNewToken(oauth2Client, callback) {
+  var authUrl = oauth2Client.generateAuthUrl({
+    access_type: 'offline',
+    scope: SCOPES
+  });
+  console.log('Authorize this app by visiting this url: ', authUrl);
+  var rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+  rl.question('Enter the code from that page here: ', function(code) {
+    rl.close();
+    oauth2Client.getToken(code, function(err, token) {
+      if (err) {
+        console.log('Error while trying to retrieve access token', err);
+        return;
+      }
+      oauth2Client.credentials = token;
+      callback(oauth2Client);
+    });
+  });
+}
+
+function uploadFile(auth){
+  var drive = google.drive('v3');
+
+  /// convert csv to google spread spreadsheet
+  var fileMetadata = {
+    'name': fileName,
+    'mimeType': 'application/vnd.google-apps.spreadsheet'
+  };
+  var media = {
+    mimeType: 'text/csv',
+    body: fs.createReadStream(fileName+'export.csv')
+  };
+  drive.files.create({
+     resource: fileMetadata,
+     media: media,
+     fields: 'id',
+     auth: auth
+  }, function(err, file) {
+    if(err) {
+      // Handle error
+      console.log(err);
+    } else {
+      console.log('File Id:' , file.id);
+      console.log('done')
+    }
+  });
+
 }

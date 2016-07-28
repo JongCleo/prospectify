@@ -27,13 +27,19 @@ var converter = new Converter({});
 var readline = require('readline');
 var google = require('googleapis');
 var googleAuth = require('google-auth-library');
+
+if (!process.env.CLIENT_ID){
+	var tokens = fs.readFileSync('./client_secret.json', 'utf8')
+}
+
+var CLIENT_ID = process.env.CLIENT_ID || JSON.parse(tokens).installed.client_id;
+var CLIENT_SECRET = process.env.CLIENT_SECRET || JSON.parse(tokens).installed.client_secret;
+var REDIRECT_URL = process.env.CLIENT_SECRET || JSON.parse(tokens).installed.redirect_uris[0];
 //////////////////////////////////////////////////////////
 
 // If modifying these scopes, delete your previously saved credentials
 // at ~/.credentials/drive-nodejs-quickstart.json
 var SCOPES = ['https://www.googleapis.com/auth/drive.file'];
-var TOKEN_DIR = '.credentials/';
-var TOKEN_PATH = TOKEN_DIR + 'drive-nodejs-app.json';
 var EMAIL_KEY = '2206f2d9f60d5e3e4420533c5df5bbb2f80aaa1f'
 var BING_KEY ='br_35635_a286273c577861ff85f1c384cdff615c40f7be27'
 /////////////////////////////////////////////////////////////
@@ -84,16 +90,7 @@ app.post('/upload', function(req, res){
 
       function(){
         exportdata(theArray.prospects, fields);
-        // Load client secrets from a local file.
-        fs.readFile('client_secret.json', function processClientSecrets(err, content) {
-          if (err) {
-            console.log('Error loading client secret file: ' + err);
-            return;
-          }
-          // Authorize a client with the loaded credentials, then call the
-          // Drive API.
-          authorize(JSON.parse(content), uploadFile);
-        });
+        authorize(uploadFile);
       })
     });
   });
@@ -391,26 +388,12 @@ function syncLoop(iterations, process, exit){
 /**
  * Create an OAuth2 client with the given credentials, and then execute the
  * given callback function.
- *
- * @param {Object} credentials The authorization client credentials.
  * @param {function} callback The callback to call with the authorized client.
  */
-function authorize(credentials, callback) {
-  var clientSecret = credentials.installed.client_secret;
-  var clientId = credentials.installed.client_id;
-  var redirectUrl = credentials.installed.redirect_uris[0];
+function authorize(callback) {
   var auth = new googleAuth();
-  var oauth2Client = new auth.OAuth2(clientId, clientSecret, redirectUrl);
-
-  // Check if we have previously stored a token.
-  fs.readFile(TOKEN_PATH, function(err, token) {
-    if (err) {
-      getNewToken(oauth2Client, callback);
-    } else {
-      oauth2Client.credentials = JSON.parse(token);
-      callback(oauth2Client);
-    }
-  });
+  var oauth2Client = new auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URL);
+  getNewToken(oauth2Client, callback);
 }
 
 /**
