@@ -74,7 +74,7 @@ app.get('/oauth2callback', function (req, res) {
       return;
     }
     oauth2Client.credentials = token;
-    callback(oauth2Client);
+    res.redirect('/')
   });
 });
 
