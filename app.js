@@ -113,7 +113,6 @@ app.post('/upload', function(req, res){
 
       function(){
         exportdata(theArray.prospects, fields);
-        uploadFile(oauth2Client);
       })
     });
   });
@@ -371,6 +370,7 @@ function googleWrap(googleUrl, callback){
      fs.writeFile(fileName+'export.csv', csv, function(err) {
        if (err) throw err;
        console.log('file saved');
+			 uploadFile(oauth2Client);
      })
    });
  }
