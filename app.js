@@ -113,7 +113,7 @@ app.post('/upload', function(req, res){
 
       function(){
         exportdata(theArray.prospects, fields);
-        uploadFile(uploadFile);
+        uploadFile(oauth2Client);
       })
     });
   });
