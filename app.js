@@ -30,7 +30,6 @@ var googleAuth = require('google-auth-library');
 
 if (!process.env.CLIENT_ID){
 	var tokens = fs.readFileSync('./client_secret.json', 'utf8')
-  console.log('asd')
 }
 
 var CLIENT_ID = process.env.CLIENT_ID || JSON.parse(tokens).web.client_id;
@@ -55,7 +54,6 @@ var theArray = {
 }
 var regex_var = new RegExp(/(\.[^\.]{0,3})(\.[^\.]{0,2})(\.*$)|(\.[^\.]*)(\.*$)/);
 
-var fileName = "test";
 var fields = ['company_name', 'first_name',"last_name", 'domain', 'title', 'bio','email','platform'];
 var platformList = ['Magento',"Shopify","WooCommerce","Demandware","PrestaShop","OpenCart","Bigcommerce","Volusion","Zen Cart"];
 
@@ -96,6 +94,7 @@ app.post('/upload', function(req, res){
   // every time a file has been uploaded successfully,
   // rename it to it's orignal name
   form.on('file', function(field, file) {
+		
     fs.rename(file.path, path.join(form.uploadDir, file.name));
     fs.createReadStream('upload/'+file.name).pipe(converter);
     converter.on("end_parsed", function (jsonArray) {
@@ -112,7 +111,7 @@ app.post('/upload', function(req, res){
       },
 
       function(){
-        exportdata(theArray.prospects, fields);
+        exportdata(theArray.prospects, fields, 'upload/'+file.name);
       })
     });
   });
@@ -133,7 +132,7 @@ app.post('/upload', function(req, res){
 });
 
 var server = app.listen(port, function() {
-    console.log('Our app is running on http://localhost:' + port);
+    console.log('Our app is running on port:' + port);
 });
 
 function googleWrap(googleUrl, callback){
@@ -364,13 +363,13 @@ function googleWrap(googleUrl, callback){
 
  }
 
- function exportdata(dataSet, headers) {
+ function exportdata(dataSet, headers, theFile) {
    json2csv( { data: dataSet, fields: headers }, function(err, csv) {
      if (err) console.log(err);
-     fs.writeFile(fileName+'export.csv', csv, function(err) {
+     fs.writeFile(theFile+'export.csv', csv, function(err) {
        if (err) throw err;
        console.log('file saved');
-			 uploadFile(oauth2Client);
+			 uploadFile(oauth2Client, theFile+'export.csv');
      })
    });
  }
@@ -450,7 +449,7 @@ function getNewToken(oauth2Client, callback) {
   });
 }
 
-function uploadFile(auth){
+function uploadFile(auth, fileName){
   var drive = google.drive('v3');
 
   /// convert csv to google spread spreadsheet
@@ -460,7 +459,7 @@ function uploadFile(auth){
   };
   var media = {
     mimeType: 'text/csv',
-    body: fs.createReadStream(fileName+'export.csv')
+    body: fs.createReadStream(fileName)
   };
   drive.files.create({
      resource: fileMetadata,
