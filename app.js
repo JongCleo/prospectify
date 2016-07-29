@@ -1,12 +1,9 @@
-// Talking to front end
+// Talking to front end and application configuration
 var express = require('express');
 var app = express();
 var path = require('path');
 var formidable = require('formidable');
 var fs = require('fs');
-
-// set the port of our application
-// process.env.PORT lets the port be set by Heroku
 var port = process.env.PORT || 8080;
 
 // DOM Element Scraping
@@ -94,7 +91,7 @@ app.post('/upload', function(req, res){
   // every time a file has been uploaded successfully,
   // rename it to it's orignal name
   form.on('file', function(field, file) {
-		
+
     fs.rename(file.path, path.join(form.uploadDir, file.name));
     fs.createReadStream('upload/'+file.name).pipe(converter);
     converter.on("end_parsed", function (jsonArray) {
