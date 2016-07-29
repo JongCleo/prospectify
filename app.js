@@ -113,7 +113,7 @@ app.post('/upload', function(req, res){
 
       function(){
         exportdata(theArray.prospects, fields);
-        authorize(uploadFile);
+        uploadFile(uploadFile);
       })
     });
   });
