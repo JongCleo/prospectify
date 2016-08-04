@@ -31,7 +31,7 @@ if (!process.env.CLIENT_ID){
 
 var CLIENT_ID = process.env.CLIENT_ID || JSON.parse(tokens).web.client_id;
 var CLIENT_SECRET = process.env.CLIENT_SECRET || JSON.parse(tokens).web.client_secret;
-var REDIRECT_URL = process.env.REDIRECT_URL || JSON.parse(tokens).web.redirect_uris[0];
+var REDIRECT_URL = process.env.REDIRECT_URL || JSON.parse(tokens).web.redirect_uris[1];
 var SCOPES = ['https://www.googleapis.com/auth/drive.file'];
 var auth = new googleAuth();
 var oauth2Client = new auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URL);
