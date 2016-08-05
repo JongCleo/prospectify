@@ -21,7 +21,6 @@ var Converter = require("csvtojson").Converter;
 var converter = new Converter({});
 
 // Google Drive Upload
-var readline = require('readline');
 var google = require('googleapis');
 var googleAuth = require('google-auth-library');
 
@@ -108,7 +107,7 @@ app.post('/upload', function(req, res){
       },
 
       function(){
-        exportdata(theArray.prospects, fields, 'upload/'+file.name);
+        exportdata(theArray.prospects, fields, file.name);
       })
     });
   });
@@ -143,7 +142,7 @@ function googleWrap(googleUrl, callback){
   var options2 = {
       url:  "https://www.google.ca/search?q=marketing+at+"+googleUrl+"+linkedin",
       headers: {
-          'User-Agent': 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.6; rv:1.9.2.16) Gecko/20110319 Firefox/3.6.16'
+          'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.117 Safari/537.36'
       }
   }
 
@@ -240,7 +239,7 @@ function googleWrap(googleUrl, callback){
                         }
                       }
               })
-            }
+            } //finished performing web scrape on google
 
             if(!full_name){
               var theObject = {
@@ -266,8 +265,7 @@ function googleWrap(googleUrl, callback){
             },
             {
              api_key: BING_KEY
-           }, function(domainRes) {
-
+					 	}, function(domainRes) { //Get the Domain based on company name
               if(!domainRes.params.results){
                 var theObject = {
                   "company_name":first_company.split("+").join(' '),
@@ -356,19 +354,8 @@ function googleWrap(googleUrl, callback){
             });// end of blockspring request
     })
 
-  }, 7000)
+  }, 4000)
 
- }
-
- function exportdata(dataSet, headers, theFile) {
-   json2csv( { data: dataSet, fields: headers }, function(err, csv) {
-     if (err) console.log(err);
-     fs.writeFile(theFile+'export.csv', csv, function(err) {
-       if (err) throw err;
-       console.log('file saved');
-			 uploadFile(oauth2Client, theFile+'export.csv');
-     })
-   });
  }
 
 function syncLoop(iterations, process, exit){
@@ -404,46 +391,15 @@ function syncLoop(iterations, process, exit){
     return loop;
 }
 
-/**
- * Create an OAuth2 client with the given credentials, and then execute the
- * given callback function.
- * @param {function} callback The callback to call with the authorized client.
- */
-function authorize(callback) {
-  var auth = new googleAuth();
-  var oauth2Client = new auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URL);
-  getNewToken(oauth2Client, callback);
-}
-
-/**
- * Get and store new token after prompting for user authorization, and then
- * execute the given callback with the authorized OAuth2 client.
- *
- * @param {google.auth.OAuth2} oauth2Client The OAuth2 client to get token for.
- * @param {getEventsCallback} callback The callback to call with the authorized
- *     client.
- */
-function getNewToken(oauth2Client, callback) {
-  var authUrl = oauth2Client.generateAuthUrl({
-    access_type: 'offline',
-    scope: SCOPES
-  });
-  console.log('Authorize this app by visiting this url: ', authUrl);
-  var rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
-  rl.question('Enter the code from that page here: ', function(code) {
-    rl.close();
-    oauth2Client.getToken(code, function(err, token) {
-      if (err) {
-        console.log('Error while trying to retrieve access token', err);
-        return;
-      }
-      oauth2Client.credentials = token;
-      callback(oauth2Client);
-    });
-  });
+function exportdata(dataSet, headers, theFile) {
+	json2csv( { data: dataSet, fields: headers }, function(err, csv) {
+		if (err) console.log(err);
+		fs.writeFile('upload/'+theFile+'export.csv', csv, function(err) {
+			if (err) throw err;
+			console.log('file saved');
+			uploadFile(oauth2Client, theFile+'export.csv');
+		})
+	});
 }
 
 function uploadFile(auth, fileName){
@@ -456,7 +412,7 @@ function uploadFile(auth, fileName){
   };
   var media = {
     mimeType: 'text/csv',
-    body: fs.createReadStream(fileName)
+    body: fs.createReadStream('upload/'+fileName)
   };
   drive.files.create({
      resource: fileMetadata,
