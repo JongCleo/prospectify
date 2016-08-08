@@ -7,6 +7,7 @@ var fs = require('fs');
 var port = process.env.PORT || 8080;
 
 // DOM Element Scraping
+var async = require('async')
 var request = require('request');
 request = request.defaults();
 var cheerio = require("cheerio");
@@ -44,12 +45,7 @@ var EMAIL_KEY = '2206f2d9f60d5e3e4420533c5df5bbb2f80aaa1f'
 var BING_KEY ='br_35635_a286273c577861ff85f1c384cdff615c40f7be27'
 /////////////////////////////////////////////////////////////
 
-var first_company, plus_company;
-var theArray = {
-  prospects:[]
-}
 var regex_var = new RegExp(/(\.[^\.]{0,3})(\.[^\.]{0,2})(\.*$)|(\.[^\.]*)(\.*$)/);
-
 var fields = ['company_name', 'first_name',"last_name", 'domain', 'title', 'bio','email','platform'];
 var platformList = ['Magento',"Shopify","WooCommerce","Demandware","PrestaShop","OpenCart","Bigcommerce","Volusion","Zen Cart"];
 
@@ -91,19 +87,29 @@ app.post('/upload', function(req, res){
   // rename it to it's orignal name
   form.on('file', function(field, file) {
 
+		var theArray = {
+			prospects:[]
+		}, company_input, url_input;
+
     fs.rename(file.path, path.join(form.uploadDir, file.name));
     fs.createReadStream('upload/'+file.name).pipe(converter);
+
     converter.on("end_parsed", function (jsonArray) {
       syncLoop(jsonArray.length,
 
       function(loop){
-        first_company = jsonArray[loop.iteration()]['Company name'].replace(regex_var, '').split('.').pop()
-        plus_company = encodeURIComponent(first_company.toLowerCase().replace('llc','').replace('inc','').split(" ").join('+'))
+				setTimeout(function () {
+					console.log(jsonArray[loop.iteration()][0])
+					company_input = jsonArray[loop.iteration()]['Company name'].replace(regex_var, '').split('.')[0]
+					url_input = encodeURIComponent(company_input.toLowerCase().replace('llc','').replace('inc','').split(" ").join('+'))
 
-        googleWrap(plus_company,
-        function(){
-          loop.next()
-        })
+					processTheContact(company_input,url_input,
+					function(returnedContact){
+						theArray.prospects.push(returnedContact);
+						console.log(returnedContact)
+						loop.next()
+					})
+				}, 4000)
       },
 
       function(){
@@ -131,264 +137,173 @@ var server = app.listen(port, function() {
     console.log('Our app is running on port:' + port);
 });
 
-function googleWrap(googleUrl, callback){
-  var options = {
-      url:  "https://www.google.ca/search?q=ecommerce+at+"+googleUrl+"+linkedin",
-      headers: {
-          'User-Agent': 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.6; rv:1.9.2.16) Gecko/20110319 Firefox/3.6.16'
-      }
-  }
+function processTheContact(companyName, companyURL, callback) {
+	async.waterfall([
+		function(callback){
+			var options = {
+					url:  "https://www.google.ca/search?q=ecommerce+at+"+companyURL+"+linkedin",
+					headers: {
+							'User-Agent': 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.6; rv:1.9.2.16) Gecko/20110319 Firefox/3.6.16'
+					}
+			}
 
-  var options2 = {
-      url:  "https://www.google.ca/search?q=marketing+at+"+googleUrl+"+linkedin",
-      headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.117 Safari/537.36'
-      }
-  }
+			googleQuery(options, companyName, function(theContact){ callback(null, theContact); })
+		},
+		function(theContact, callback){
+			if(!theContact.first_name){
+				var options = {
+						url:  "https://www.google.ca/search?q=marketing+at+"+companyURL+"+linkedin",
+						headers: {
+								'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.117 Safari/537.36'
+						}
+				}
 
-  setTimeout(function () {
+				googleQuery(options, companyName, function(theContact){	callback(null, theContact); })
+			}
+			else{
+				callback(null, theContact);
+			}
+		},
+		function(theContact, callback){
+			if(!theContact.first_name){
+				callback(null, theContact, null)
+				return;
+			}
 
-    // get the bio, name and title
-    request(options, function (err, res, body) {
-            var $ = cheerio.load(body);
-            var checkTitle = [], description = [];
-            var elem, bio, profileLink, baseselector, title, full_name;
+			blockspring.runParsed("web-search-top-result-bing",
+			{
+				"search_query": companyName,
+				"host_only": false
+			},
+			{
+			 api_key: BING_KEY
+			}, function(domainRes) {
+				if(domainRes.params.results){ theContact.domain = domainRes.params.results.replace('http://','').replace('https://','').replace('www.','').split(/[/?#]/)[0]	}
+				callback(null, theContact, domainRes.params.results)
+			})
+		},
+		function(theContact, wapURL, callback){
+			if(!theContact.first_name){
+				callback(null, theContact, null)
+				return;
+			}
 
-            $(".f.slp").each(function(n){
-              checkTitle[n] = $(this).text().toLowerCase()
-              description[n] = $(this).parent().find('span').text().toLowerCase()
-            })
+			if(!theContact.domain){
+				request('https://api.emailhunter.co/v1/generate?company='+theContact.company_name+'&first_name='+encodeURIComponent(theContact.first_name)+'&last_name='+encodeURIComponent(theContact.last_name)+'&api_key='+EMAIL_KEY,
+				function(error, response, body){
+					if(body.indexOf("<html>") == -1){
+						var stuff = JSON.parse(body);
+						if (stuff.status == 'success'){
+							theContact.email = stuff.email;
+						}
+					}
+					callback(null, theContact, null)
+					return
+				});
+			}
+			else{
+				request('https://api.emailhunter.co/v1/generate?domain='+theContact.domain+'&?company='+encodeURIComponent(theContact.company_name)+'&first_name='+encodeURIComponent(theContact.first_name)+'&last_name='+theContact.last_name+'&api_key='+EMAIL_KEY, function(error, response, body){
+						if(body.indexOf("<html>") == -1){
+							var stuff = JSON.parse(body);
+							if (stuff.status == 'success'){
+								theContact.email = stuff.email;
+							}
+						}
+						callback(null, theContact, wapURL)
+						return
+					});
+			}
+		},
+		function(theContact, wapURL, callback){
 
-            for (var i = 0; i < checkTitle.length; i ++)
-            {
-              if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("CEO") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && ((stringSimilarity.compareTwoStrings(checkTitle[i].substring(checkTitle[i].lastIndexOf('-')+3).replace(/\./g, ''), first_company.toLowerCase()) > 0.4) || (description[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1)))
-              {
+				if(wapURL){
+					var wapOptions = {
+						url: wapURL,
+						hostname: theContact.domain,
+						debug:false
+					}
 
-                baseselector =".f.slp:eq("+i+")";
+					wappalyzer.detectFromUrl(wapOptions, function(err,apps,appInfo){
+						if(err || !apps){
+							console.log(err)
+						}
+						else{
+							for (var i =0; i<apps.length; i++){
+								if(platformList.indexOf(apps[i]) >= 0){
+									theContact.platform = apps[i];
+								}
+							}
+						}
+						callback(null, theContact)
+						return
+					})
+				}
+				else{
+					callback(null, theContact)
+				}
+		}
+	], function(err, theContact){	callback(theContact) })
+}
 
-                bio = find($, baseselector).parent().children().first().children().first().text()
-                elem = find($, baseselector).parent().parent().children().first().children().text()
-                full_name = find($, baseselector).parent().parent().children().first().children().text().substring(0, elem.indexOf(' |'))
-                title = find($, baseselector).text()
+function googleQuery(options, companyName, callback) {
 
-                break;
-              }
-            }
+	request(options, function (err, res, body) {
+			var $ = cheerio.load(body), checkTitle = [], description = [];
+			var baseselector, full_name, elem, theContact = {
+				"company_name":companyName,
+				"first_name": "",
+				"last_name": "",
+				"domain": "",
+				"title": "",
+				"bio": "",
+				"email":"",
+				"platform":""
+			}
 
-            if(!title){
-              for (var i = 0; i < checkTitle.length; i ++)
-              {
-                if( (stringSimilarity.compareTwoStrings(checkTitle[i].substring(checkTitle[i].lastIndexOf('-')+3).replace(/\./g, ''), first_company.toLowerCase()) > 0.4) || (description[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1) )
-                {
+			$(".f.slp").each(function(n){
+				checkTitle[n] = $(this).text().toLowerCase()
+				description[n] = $(this).parent().find('span').text().toLowerCase()
+			})
 
-                  baseselector =".f.slp:eq("+i+")";
+			for (var i = 0; i < checkTitle.length; i ++)
+			{
+				console.log("Ecommerce query with entry "+ i+ " and title "+checkTitle+"\n")
+				if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("CEO") > -1) || (checkTitle[i].indexOf("technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && ((stringSimilarity.compareTwoStrings(checkTitle[i].substring(checkTitle[i].lastIndexOf('-')+3).replace(/\./g, ''), companyName.toLowerCase()) > 0.4) || (description[i].indexOf(companyName.toLowerCase().replace("\’", "\'")) > -1)))
+				{
 
-                  bio = find($, baseselector).parent().children().first().children().first().text()
-                  elem = find($, baseselector).parent().parent().children().first().children().text()
-                  full_name = find($, baseselector).parent().parent().children().first().children().text().substring(0, elem.indexOf(' |'))
-                  title = find($, baseselector).text()
+					baseselector =".f.slp:eq("+i+")";
+					elem = find($, baseselector).parent().parent().children().first().children().text()
+					full_name = find($, baseselector).parent().parent().children().first().children().text().substring(0, elem.indexOf(' |'))
+					theContact.first_name = full_name.split(' ').slice(0, -1).join(' ')
+					theContact.last_name = full_name.split(' ').slice(-1).join(' ')
+					theContact.bio = find($, baseselector).parent().children().first().children().first().text()
+					theContact.title = find($, baseselector).text()
 
-                  break;
-                }
-              }
-            }
+					break;
+				}
+			}
 
-            if(!title){
-              request(options2, function (err, res, body) {
-                      var $ = cheerio.load(body);
-                      var checkTitle = [], description = [];
-                      var elem, bio, profileLink, baseselector, title, full_name;
+			if(!theContact.first_name){
+				for (var i = 0; i < checkTitle.length; i ++)
+				{
+					console.log("Ecommerce last resort with entry "+ i+ " and title "+checkTitle+"\n")
+					if( (stringSimilarity.compareTwoStrings(checkTitle[i].substring(checkTitle[i].lastIndexOf('-')+3).replace(/\./g, ''), companyName.toLowerCase()) > 0.4) || (description[i].indexOf(companyName.toLowerCase().replace("\’", "\'")) > -1) )
+					{
 
-                      $(".f.slp").each(function(n){
-                        checkTitle[n] = $(this).text().toLowerCase()
-                        description[n] = $(this).parent().find('span').text().toLowerCase()
-                      })
+						baseselector =".f.slp:eq("+i+")";
+						elem = find($, baseselector).parent().parent().children().first().children().text()
+						full_name = find($, baseselector).parent().parent().children().first().children().text().substring(0, elem.indexOf(' |'))
+						theContact.first_name = full_name.split(' ').slice(0, -1).join(' ')
+						theContact.last_name = full_name.split(' ').slice(-1).join(' ')
+						theContact.bio = find($, baseselector).parent().children().first().children().first().text()
+						theContact.title = find($, baseselector).text()
 
-                      for (var i = 0; i < checkTitle.length; i ++)
-                      {
-                        if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("chief technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && ((stringSimilarity.compareTwoStrings(checkTitle[i].substring(checkTitle[i].lastIndexOf('-')+3).replace(/\./g, ''), first_company.toLowerCase()) > 0.4)
-                        || (description[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1)))
-                        {
-
-                          baseselector =".f.slp:eq("+i+")";
-
-                          bio = find($, baseselector).parent().children().first().children().first().text()
-                          elem = find($, baseselector).parent().parent().children().first().children().text()
-                          full_name = find($, baseselector).parent().parent().children().first().children().text().substring(0, elem.indexOf(' |'))
-                          title = find($, baseselector).text()
-
-                          break;
-                        }
-                      }
-
-                      if(!title){
-                        for (var i = 0; i < checkTitle.length; i ++)
-                        {
-                          if( (stringSimilarity.compareTwoStrings(checkTitle[i].substring(checkTitle[i].lastIndexOf('-')+3).replace(/\./g, ''), first_company.toLowerCase()) > 0.4) || (description[i].indexOf(first_company.toLowerCase().replace("\’", "\'")) > -1) )
-                          {
-
-                            baseselector =".f.slp:eq("+i+")";
-
-                            bio = find($, baseselector).parent().children().first().children().first().text()
-                            elem = find($, baseselector).parent().parent().children().first().children().text()
-                            full_name = find($, baseselector).parent().parent().children().first().children().text().substring(0, elem.indexOf(' |'))
-                            title = find($, baseselector).text()
-
-                            break;
-                          }
-                        }
-                      }
-              })
-            } //finished performing web scrape on google
-
-            if(!full_name){
-              var theObject = {
-                "company_name":first_company.split("+").join(' '),
-                "first_name": "",
-                "last_name": "",
-                "domain": "",
-                "title": "",
-                "bio": "",
-                "email":"",
-                "platform":""
-              }
-              theArray.prospects.push(theObject);
-              console.log(theObject)
-              callback()
-              return
-            }
-
-            blockspring.runParsed("web-search-top-result-bing",
-            {
-              "search_query": first_company.split("+").join(' '),
-              "host_only": false
-            },
-            {
-             api_key: BING_KEY
-					 	}, function(domainRes) { //Get the Domain based on company name
-              if(!domainRes.params.results){
-                var theObject = {
-                  "company_name":first_company.split("+").join(' '),
-                  "first_name": full_name.split(' ').slice(0, -1).join(' '),
-                  "last_name": full_name.split(' ').slice(-1).join(' '),
-                  "domain": "",
-                  "title": title,
-                  "bio": bio
-                }
-                request('https://api.emailhunter.co/v1/generate?company='+theObject.company_name+'&first_name='+encodeURIComponent(theObject.first_name)+'&last_name='+encodeURIComponent(theObject.last_name)+'&api_key='+EMAIL_KEY, function(error, response, body){
-
-                  if(body.indexOf("<html>")>-1){
-                    theObject.email = "";
-                    theObject.platform ="";
-                  }
-                  else{
-                    var stuff = JSON.parse(body);
-
-                    if (stuff.status == 'success'){
-                      theObject.email = stuff.email;
-                      theObject.platform ="";
-                    }
-                    else {
-                      theObject.email = "";
-                      theObject.platform ="";
-                    }
-                  }
-
-                  theArray.prospects.push(theObject);
-                  callback()
-                  console.log(theObject)
-                });
-              }
-              else{
-
-                var theObject = {
-                  "company_name":first_company.split("+").join(' '),
-                  "first_name": full_name.split(' ').slice(0, -1).join(' '),
-                  "last_name": full_name.split(' ').slice(-1).join(' '),
-                  "domain": domainRes.params.results.replace('http://','').replace('https://','').replace('www.','').split(/[/?#]/)[0],
-                  "title": title,
-                  "bio": bio
-                }
-
-                request('https://api.emailhunter.co/v1/generate?domain='+theObject.domain+'&?company='+encodeURIComponent(theObject.company_name)+'&first_name='+encodeURIComponent(theObject.first_name)+'&last_name='+theObject.last_name+'&api_key='+EMAIL_KEY, function(error, response, body){
-
-                  if(body.indexOf("<html>")>-1){
-                    theObject.email = "";
-                  }
-                  else{
-                    var stuff = JSON.parse(body);
-
-                    if (stuff.status == 'success'){
-                      theObject.email = stuff.email
-                    }
-                    else {
-                      theObject.email = "";
-                    }
-                  }
-
-                  var wapOptions = {
-                    url: domainRes.params.results,
-                    hostname: theObject.domain,
-                    debug:false
-                  }
-
-                  wappalyzer.detectFromUrl(wapOptions, function(err,apps,appInfo){
-                    if(err || !apps){
-                      console.log(err)
-                    }
-                    else{
-                      for (var i =0; i<apps.length; i++){
-                        if(platformList.indexOf(apps[i]) >= 0){
-                          theObject.platform = apps[i];
-                          console.log("platform is: "+theObject.platform);
-                          break;
-                        }
-                      }
-                    }
-                    theArray.prospects.push(theObject);
-                    callback()
-                    console.log(theObject)
-                  })// end of wappalyzer request
-                });// end of email hunter request
-              }// end of else clause
-            });// end of blockspring request
-    })
-
-  }, 4000)
-
- }
-
-function syncLoop(iterations, process, exit){
-    var index = 0,
-        done = false,
-        shouldExit = false;
-    var loop = {
-        next:function(){
-            if(done){
-                if(shouldExit && exit){
-                    return exit(); // Exit if we're done
-                }
-            }
-            // If we're not finished
-            if(index < iterations){
-                index++; // Increment our index
-                process(loop); // Run our process, pass in the loop
-            // Otherwise we're done
-            } else {
-                done = true; // Make sure we say we're done
-                if(exit) exit(); // Call the callback on exit
-            }
-        },
-        iteration:function(){
-            return index - 1; // Return the loop number we're on
-        },
-        break:function(end){
-            done = true; // End the loop
-            shouldExit = end; // Passing end as true means we still call the exit callback
-        }
-    };
-    loop.next();
-    return loop;
+						break;
+					}
+				}
+			}
+			callback(theContact)
+		})
 }
 
 function exportdata(dataSet, headers, theFile) {
@@ -428,5 +343,37 @@ function uploadFile(auth, fileName){
       console.log('done')
     }
   });
+}
 
+function syncLoop(iterations, process, exit){
+    var index = 0,
+        done = false,
+        shouldExit = false;
+    var loop = {
+        next:function(){
+            if(done){
+                if(shouldExit && exit){
+                    return exit(); // Exit if we're done
+                }
+            }
+            // If we're not finished
+            if(index < iterations){
+                index++; // Increment our index
+                process(loop); // Run our process, pass in the loop
+            // Otherwise we're done
+            } else {
+                done = true; // Make sure we say we're done
+                if(exit) exit(); // Call the callback on exit
+            }
+        },
+        iteration:function(){
+            return index - 1; // Return the loop number we're on
+        },
+        break:function(end){
+            done = true; // End the loop
+            shouldExit = end; // Passing end as true means we still call the exit callback
+        }
+    };
+    loop.next();
+    return loop;
 }
