@@ -99,7 +99,6 @@ app.post('/upload', function(req, res){
 
       function(loop){
 				setTimeout(function () {
-					console.log(jsonArray[loop.iteration()][0])
 					company_input = jsonArray[loop.iteration()]['Company name'].replace(regex_var, '').split('.')[0]
 					url_input = encodeURIComponent(company_input.toLowerCase().replace('llc','').replace('inc','').split(" ").join('+'))
 
@@ -267,7 +266,6 @@ function googleQuery(options, companyName, callback) {
 
 			for (var i = 0; i < checkTitle.length; i ++)
 			{
-				console.log("Ecommerce query with entry "+ i+ " and title "+checkTitle+"\n")
 				if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("CEO") > -1) || (checkTitle[i].indexOf("technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && ((stringSimilarity.compareTwoStrings(checkTitle[i].substring(checkTitle[i].lastIndexOf('-')+3).replace(/\./g, ''), companyName.toLowerCase()) > 0.4) || (description[i].indexOf(companyName.toLowerCase().replace("\’", "\'")) > -1)))
 				{
 
@@ -286,7 +284,6 @@ function googleQuery(options, companyName, callback) {
 			if(!theContact.first_name){
 				for (var i = 0; i < checkTitle.length; i ++)
 				{
-					console.log("Ecommerce last resort with entry "+ i+ " and title "+checkTitle+"\n")
 					if( (stringSimilarity.compareTwoStrings(checkTitle[i].substring(checkTitle[i].lastIndexOf('-')+3).replace(/\./g, ''), companyName.toLowerCase()) > 0.4) || (description[i].indexOf(companyName.toLowerCase().replace("\’", "\'")) > -1) )
 					{
 
