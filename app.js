@@ -108,7 +108,7 @@ app.post('/upload', function(req, res){
 						console.log(returnedContact)
 						loop.next()
 					})
-				}, 4000)
+				}, 8000)
       },
 
       function(){
@@ -146,25 +146,26 @@ function processTheContact(companyName, companyURL, callback) {
 					}
 			}
 
-			googleQuery(options, companyName, function(theContact){ callback(null, theContact); })
+			googleQuery(options, companyName, function(theContact){ console.log("First google results "+theContact); callback(null, theContact); })
 		},
 		function(theContact, callback){
 			if(!theContact.first_name){
 				var options = {
 						url:  "https://www.google.ca/search?q=marketing+at+"+companyURL+"+linkedin",
 						headers: {
-								'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.117 Safari/537.36'
+								'User-Agent': 'Mozilla/5.0 (compatible, MSIE 11, Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko'
 						}
 				}
 
-				googleQuery(options, companyName, function(theContact){	callback(null, theContact); })
+				googleQuery(options, companyName, function(contact){	console.log("Second google results "+contact); callback(null, contact); })
 			}
 			else{
-				callback(null, theContact);
+				console.log("Second google not neeeded "+theContact); callback(null, theContact);
 			}
 		},
 		function(theContact, callback){
 			if(!theContact.first_name){
+				console.log("Empty object, domain not neeeded "+theContact);
 				callback(null, theContact, null)
 				return;
 			}
@@ -178,11 +179,12 @@ function processTheContact(companyName, companyURL, callback) {
 			 api_key: BING_KEY
 			}, function(domainRes) {
 				if(domainRes.params.results){ theContact.domain = domainRes.params.results.replace('http://','').replace('https://','').replace('www.','').split(/[/?#]/)[0]	}
-				callback(null, theContact, domainRes.params.results)
+				console.log("Domain results"+theContact); callback(null, theContact, domainRes.params.results)
 			})
 		},
 		function(theContact, wapURL, callback){
 			if(!theContact.first_name){
+				console.log("Empty object, email not neeeded "+theContact);
 				callback(null, theContact, null)
 				return;
 			}
@@ -196,7 +198,7 @@ function processTheContact(companyName, companyURL, callback) {
 							theContact.email = stuff.email;
 						}
 					}
-					callback(null, theContact, null)
+					console.log("Email results without domain"+theContact); callback(null, theContact, null)
 					return
 				});
 			}
@@ -208,7 +210,7 @@ function processTheContact(companyName, companyURL, callback) {
 								theContact.email = stuff.email;
 							}
 						}
-						callback(null, theContact, wapURL)
+						console.log("Email results with the domain"+ theContact); callback(null, theContact, wapURL)
 						return
 					});
 			}
@@ -233,11 +235,13 @@ function processTheContact(companyName, companyURL, callback) {
 								}
 							}
 						}
+						console.log("Wappalyzer result: "+theContact);
 						callback(null, theContact)
 						return
 					})
 				}
 				else{
+					console.log("No wappalyzer match: "+theContact);
 					callback(null, theContact)
 				}
 		}
@@ -270,8 +274,8 @@ function googleQuery(options, companyName, callback) {
 				{
 
 					baseselector =".f.slp:eq("+i+")";
-					elem = find($, baseselector).parent().parent().children().first().children().text()
-					full_name = find($, baseselector).parent().parent().children().first().children().text().substring(0, elem.indexOf(' |'))
+					elem = find($, baseselector).parent().parent().parent().children().first().children().text()
+					full_name = elem.substring(0, elem.indexOf(' |'))
 					theContact.first_name = full_name.split(' ').slice(0, -1).join(' ')
 					theContact.last_name = full_name.split(' ').slice(-1).join(' ')
 					theContact.bio = find($, baseselector).parent().children().first().children().first().text()
@@ -288,8 +292,8 @@ function googleQuery(options, companyName, callback) {
 					{
 
 						baseselector =".f.slp:eq("+i+")";
-						elem = find($, baseselector).parent().parent().children().first().children().text()
-						full_name = find($, baseselector).parent().parent().children().first().children().text().substring(0, elem.indexOf(' |'))
+						elem = find($, baseselector).parent().parent().parent().children().first().children().text()
+						full_name = elem.substring(0, elem.indexOf(' |'))
 						theContact.first_name = full_name.split(' ').slice(0, -1).join(' ')
 						theContact.last_name = full_name.split(' ').slice(-1).join(' ')
 						theContact.bio = find($, baseselector).parent().children().first().children().first().text()
