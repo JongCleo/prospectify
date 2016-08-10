@@ -19,7 +19,6 @@ var wappalyzer = require("wappalyzer");
 // Parsing between JSON and CSVs
 var json2csv = require('json2csv');
 var Converter = require("csvtojson").Converter;
-var converter = new Converter({});
 
 // Google Drive Upload
 var google = require('googleapis');
@@ -86,10 +85,12 @@ app.post('/upload', function(req, res){
   // every time a file has been uploaded successfully,
   // rename it to it's orignal name
   form.on('file', function(field, file) {
+		console.log("file received")
 
 		var theArray = {
 			prospects:[]
 		}, company_input, url_input;
+		var converter = new Converter({});
 
     fs.rename(file.path, path.join(form.uploadDir, file.name));
     fs.createReadStream('upload/'+file.name).pipe(converter);
@@ -146,7 +147,7 @@ function processTheContact(companyName, companyURL, callback) {
 					}
 			}
 
-			googleQuery(options, companyName, function(theContact){ console.log("First google results "+theContact); callback(null, theContact); })
+			googleQuery(options, companyName, function(theContact){ callback(null, theContact); })
 		},
 		function(theContact, callback){
 			if(!theContact.first_name){
@@ -157,15 +158,14 @@ function processTheContact(companyName, companyURL, callback) {
 						}
 				}
 
-				googleQuery(options, companyName, function(contact){	console.log("Second google results "+contact); callback(null, contact); })
+				googleQuery(options, companyName, function(contact){ callback(null, contact); })
 			}
 			else{
-				console.log("Second google not neeeded "+theContact); callback(null, theContact);
+				callback(null, theContact);
 			}
 		},
 		function(theContact, callback){
 			if(!theContact.first_name){
-				console.log("Empty object, domain not neeeded "+theContact);
 				callback(null, theContact, null)
 				return;
 			}
@@ -179,12 +179,11 @@ function processTheContact(companyName, companyURL, callback) {
 			 api_key: BING_KEY
 			}, function(domainRes) {
 				if(domainRes.params.results){ theContact.domain = domainRes.params.results.replace('http://','').replace('https://','').replace('www.','').split(/[/?#]/)[0]	}
-				console.log("Domain results"+theContact); callback(null, theContact, domainRes.params.results)
+				callback(null, theContact, domainRes.params.results)
 			})
 		},
 		function(theContact, wapURL, callback){
 			if(!theContact.first_name){
-				console.log("Empty object, email not neeeded "+theContact);
 				callback(null, theContact, null)
 				return;
 			}
@@ -198,7 +197,7 @@ function processTheContact(companyName, companyURL, callback) {
 							theContact.email = stuff.email;
 						}
 					}
-					console.log("Email results without domain"+theContact); callback(null, theContact, null)
+					callback(null, theContact, null)
 					return
 				});
 			}
@@ -210,7 +209,7 @@ function processTheContact(companyName, companyURL, callback) {
 								theContact.email = stuff.email;
 							}
 						}
-						console.log("Email results with the domain"+ theContact); callback(null, theContact, wapURL)
+						callback(null, theContact, wapURL)
 						return
 					});
 			}
@@ -235,13 +234,11 @@ function processTheContact(companyName, companyURL, callback) {
 								}
 							}
 						}
-						console.log("Wappalyzer result: "+theContact);
 						callback(null, theContact)
 						return
 					})
 				}
 				else{
-					console.log("No wappalyzer match: "+theContact);
 					callback(null, theContact)
 				}
 		}

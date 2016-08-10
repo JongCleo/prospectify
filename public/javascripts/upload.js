@@ -1,11 +1,13 @@
 
 $('.upload-btn').on('click', function (){
+    console.log('dadada')
     $('#upload-input').click();
     $('.progress-bar').text('0%');
     $('.progress-bar').width('0%');
 });
 
 $('#upload-input').on('change', function(){
+  console.log("triggered")
 
   var files = $(this).get(0).files;
 
@@ -59,6 +61,6 @@ $('#upload-input').on('change', function(){
         return xhr;
       }
     });
-
+    $(this).replaceWith($(this).val('').clone(true));
   }
 });
