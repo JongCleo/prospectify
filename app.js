@@ -1,5 +1,7 @@
 // Talking to front end and application configuration
 var express = require('express');
+var cookieParser = require('cookie-parser')
+var session = require('express-session')
 var app = express();
 var path = require('path');
 var formidable = require('formidable');
@@ -47,8 +49,14 @@ var BING_KEY ='br_35635_a286273c577861ff85f1c384cdff615c40f7be27'
 var regex_var = new RegExp(/(\.[^\.]{0,3})(\.[^\.]{0,2})(\.*$)|(\.[^\.]*)(\.*$)/);
 var fields = ['company_name', 'first_name',"last_name", 'domain', 'title', 'bio','email','platform'];
 var platformList = ['Magento',"Shopify","WooCommerce","Demandware","PrestaShop","OpenCart","Bigcommerce","Volusion","Zen Cart"];
+var sess = {
+  secret: '1234567890QWERTY',
+  cookie: {}
+}
 
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(cookieParser());
+app.use(session(sess));
 
 // Initial page redirecting to Google
 app.get('/auth', function (req, res) {
@@ -62,7 +70,7 @@ app.get('/oauth2callback', function (req, res) {
       console.log('Error while trying to retrieve access token', err);
       return;
     }
-    oauth2Client.credentials = token;
+		req.session.credentials = token;
     res.redirect('/')
   });
 });
@@ -113,6 +121,7 @@ app.post('/upload', function(req, res){
       },
 
       function(){
+				oauth2Client.credentials = req.session.credentials
         exportdata(theArray.prospects, fields, file.name);
       })
     });
