@@ -1,14 +1,14 @@
-// Talking to front end and application configuration
+// For Client-Server communication and app setup.
 var express = require('express');
+var app = express();
 var cookieParser = require('cookie-parser')
 var session = require('express-session')
-var app = express();
 var path = require('path');
 var formidable = require('formidable');
 var fs = require('fs');
 var port = process.env.PORT || 8080;
 
-// DOM Element Scraping
+// Stuff used for web scraping.
 var async = require('async')
 var request = require('request');
 request = request.defaults();
@@ -18,6 +18,12 @@ var blockspring = require("blockspring");
 var stringSimilarity = require('string-similarity');
 var wappalyzer = require("wappalyzer");
 
+if (!process.env.CLIENT_ID){
+	var keys = fs.readFileSync('./config.json', 'utf8')
+}
+var EMAIL_KEY = process.env.EMAIL_KEY || JSON.parse(keys).mydata.API_TOKENS.email_key
+var BING_KEY = process.env.BING_KEY || JSON.parse(keys).mydata.API_TOKENS.bing_key
+
 // Parsing between JSON and CSVs
 var json2csv = require('json2csv');
 var Converter = require("csvtojson").Converter;
@@ -25,11 +31,9 @@ var Converter = require("csvtojson").Converter;
 // Google Drive Upload
 var google = require('googleapis');
 var googleAuth = require('google-auth-library');
-
 if (!process.env.CLIENT_ID){
 	var tokens = fs.readFileSync('./client_secret.json', 'utf8')
 }
-
 var CLIENT_ID = process.env.CLIENT_ID || JSON.parse(tokens).web.client_id;
 var CLIENT_SECRET = process.env.CLIENT_SECRET || JSON.parse(tokens).web.client_secret;
 var REDIRECT_URL = process.env.REDIRECT_URL || JSON.parse(tokens).web.redirect_uris[1];
@@ -41,28 +45,31 @@ var authUrl = oauth2Client.generateAuthUrl({
   scope: SCOPES
 });
 
-//////////////////////////////////////////////////////////
-var EMAIL_KEY = '2206f2d9f60d5e3e4420533c5df5bbb2f80aaa1f'
-var BING_KEY ='br_35635_a286273c577861ff85f1c384cdff615c40f7be27'
-/////////////////////////////////////////////////////////////
-
+// Global variables
+		// regex_var is used to extract Lowest Level Domain from inputs that are URLS
+		// fields are the headers that are written to the output csv
+		// platformList are the top ecommerce options to search for when running the wappalyzer check
+		// sess is used for simultaneous user sessions
 var regex_var = new RegExp(/(\.[^\.]{0,3})(\.[^\.]{0,2})(\.*$)|(\.[^\.]*)(\.*$)/);
 var fields = ['company_name', 'first_name',"last_name", 'domain', 'title', 'bio','email','platform'];
 var platformList = ['Magento',"Shopify","WooCommerce","Demandware","PrestaShop","OpenCart","Bigcommerce","Volusion","Zen Cart"];
 var sess = {
   secret: '1234567890QWERTY',
-  cookie: {}
+  cookie: {},
+	resave: true,
+	saveUninitialized: true
 }
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(cookieParser());
 app.use(session(sess));
 
-// Initial page redirecting to Google
+// Auth endpoint redirects to Google authorization
 app.get('/auth', function (req, res) {
     res.redirect(authUrl);
 });
 
+// Authorization callback redirects to homepage
 app.get('/oauth2callback', function (req, res) {
   var code = req.query.code;
   oauth2Client.getToken(code, function(err, token) {
@@ -90,11 +97,10 @@ app.post('/upload', function(req, res){
   // store all uploads in the /uploads directory
   form.uploadDir = path.join(__dirname, '/upload');
 
-  // every time a file has been uploaded successfully,
-  // rename it to it's orignal name
   form.on('file', function(field, file) {
 		console.log("file received")
 
+		// theArray stores each processed contact.
 		var theArray = {
 			prospects:[]
 		}, company_input, url_input;
@@ -103,6 +109,9 @@ app.post('/upload', function(req, res){
     fs.rename(file.path, path.join(form.uploadDir, file.name));
     fs.createReadStream('upload/'+file.name).pipe(converter);
 
+		// When the file is parsed, go through each row in the csv and get a prospect
+		// to match each company. Afterwards, export theArray into a new csv and
+		// upload it to the user's G-drive.
     converter.on("end_parsed", function (jsonArray) {
       syncLoop(jsonArray.length,
 
@@ -146,8 +155,15 @@ var server = app.listen(port, function() {
     console.log('Our app is running on port:' + port);
 });
 
+/* processTheContact() uses companyName,
+	 and companyURL (URL friendly text that's inserted into the query)
+	 to return a thoroughly researched prospect in the callback()
+*/
+
 function processTheContact(companyName, companyURL, callback) {
 	async.waterfall([
+
+		// First attempt to search for a prospect using the query "ecommerce at company name linkedin"
 		function(callback){
 			var options = {
 					url:  "https://www.google.ca/search?q=ecommerce+at+"+companyURL+"+linkedin",
@@ -158,6 +174,8 @@ function processTheContact(companyName, companyURL, callback) {
 
 			googleQuery(options, companyName, function(theContact){ callback(null, theContact); })
 		},
+
+		// Second attempt to search for a prospect using the query "marketing at company name linkedin"
 		function(theContact, callback){
 			if(!theContact.first_name){
 				var options = {
@@ -173,6 +191,8 @@ function processTheContact(companyName, companyURL, callback) {
 				callback(null, theContact);
 			}
 		},
+
+		// Uses blockspring's api to find the lowest level domain based on the companyName.
 		function(theContact, callback){
 			if(!theContact.first_name){
 				callback(null, theContact, null)
@@ -191,6 +211,8 @@ function processTheContact(companyName, companyURL, callback) {
 				callback(null, theContact, domainRes.params.results)
 			})
 		},
+
+		// Uses emailhunter api to find the prospect's email
 		function(theContact, wapURL, callback){
 			if(!theContact.first_name){
 				callback(null, theContact, null)
@@ -223,6 +245,8 @@ function processTheContact(companyName, companyURL, callback) {
 					});
 			}
 		},
+
+		// Uses wappalyzer api to find the ecommerce platform if available.
 		function(theContact, wapURL, callback){
 
 				if(wapURL){
@@ -254,6 +278,11 @@ function processTheContact(companyName, companyURL, callback) {
 	], function(err, theContact){	callback(theContact) })
 }
 
+/* googleQuery() uses the options (containing the user agent and search query)
+	 to search for the best matching linkedin profile for a given company.
+	 It will return a javascript object containing the contact's company, first
+	 name, last name, and linkedin url
+*/
 function googleQuery(options, companyName, callback) {
 
 	request(options, function (err, res, body) {
@@ -269,11 +298,14 @@ function googleQuery(options, companyName, callback) {
 				"platform":""
 			}
 
+			// $(".f.slp") is a class selector only search results that are linkedin profiles
+			// will return. This is how it filters general search results to only linkedin profiles.
 			$(".f.slp").each(function(n){
 				checkTitle[n] = $(this).text().toLowerCase()
 				description[n] = $(this).parent().find('span').text().toLowerCase()
 			})
 
+			// For each linkedin result, look for an ecommerce/marketing specialist at the given company.
 			for (var i = 0; i < checkTitle.length; i ++)
 			{
 				if( ((checkTitle[i].indexOf("commerce") > -1) || (checkTitle[i].indexOf("marketing") > -1) || (checkTitle[i].indexOf("digital") > -1) || (checkTitle[i].indexOf("CEO") > -1) || (checkTitle[i].indexOf("technology") > -1) || (checkTitle[i].indexOf("founder") > -1)) && ((stringSimilarity.compareTwoStrings(checkTitle[i].substring(checkTitle[i].lastIndexOf('-')+3).replace(/\./g, ''), companyName.toLowerCase()) > 0.4) || (description[i].indexOf(companyName.toLowerCase().replace("\’", "\'")) > -1)))
@@ -291,6 +323,7 @@ function googleQuery(options, companyName, callback) {
 				}
 			}
 
+			// If the first search didn't work, loosen up the filter to only look for a company name match.
 			if(!theContact.first_name){
 				for (var i = 0; i < checkTitle.length; i ++)
 				{
@@ -313,6 +346,8 @@ function googleQuery(options, companyName, callback) {
 		})
 }
 
+// exportData() writes the dataSet and header into a finished csv
+// and calls uploadFile() upon completion.
 function exportdata(dataSet, headers, theFile) {
 	json2csv( { data: dataSet, fields: headers }, function(err, csv) {
 		if (err) console.log(err);
@@ -324,6 +359,7 @@ function exportdata(dataSet, headers, theFile) {
 	});
 }
 
+// uploadFile() sends the processed csv into the user's google drive.
 function uploadFile(auth, fileName){
   var drive = google.drive('v3');
 
@@ -352,6 +388,7 @@ function uploadFile(auth, fileName){
   });
 }
 
+// A synchronous loop method.
 function syncLoop(iterations, process, exit){
     var index = 0,
         done = false,

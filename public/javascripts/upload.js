@@ -1,4 +1,3 @@
-
 $('.upload-btn').on('click', function (){
     console.log('dadada')
     $('#upload-input').click();
