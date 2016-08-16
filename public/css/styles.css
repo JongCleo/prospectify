@@ -67,7 +67,7 @@ li{
   font-size: 1.4em;
 }
 
-#instructions, #output{
+#instructions, #output, #uploadFile, #top{
   color:white;
   display: -webkit-flex;
   display: flex;
@@ -75,28 +75,26 @@ li{
   justify-content: center;
   -webkit-flex-direction: column;
   flex-direction: column;
-  height:400px;
   line-height:2.2em;
 }
 #instructions{
   background-color:#4791D2;
   text-align: left;
+  height:400px;
 }
 #output{
   background-color:#D3D3D3;
-  text-align: right;
+  height:400px;
+}
+
+#uploadFile, #top{
+  height:300px;
 }
 
 img{
   width:100%;
   height:400px;
   padding:0;
-}
-#uploadFile, #top{
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height:300px;
 }
 
 /* The Modal (background) */

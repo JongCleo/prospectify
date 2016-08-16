@@ -42,7 +42,8 @@ var auth = new googleAuth();
 var oauth2Client = new auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URL);
 var authUrl = oauth2Client.generateAuthUrl({
   access_type: 'offline',
-  scope: SCOPES
+  scope: SCOPES,
+	prompt:"consent"
 });
 
 // Global variables
@@ -380,12 +381,37 @@ function uploadFile(auth, fileName){
   }, function(err, file) {
     if(err) {
       // Handle error
-      console.log(err);
-    } else {
+      console.log(err+"retrying with refreshtokens");
+			auth.refreshAcessTokens(function(err, tokens){
+				if(err){
+						console.log(err+"damn son no refreshtokens. Now we're screwed.")
+						return
+				}
+				else{
+					auth.credentials = tokens;
+					drive.files.create({
+				     resource: fileMetadata,
+				     media: media,
+				     fields: 'id',
+				     auth: auth
+				  }, function(err, file) {
+				    if(err) {
+				      // Handle error
+				      console.log(err+"damn son now we're screwed.");
+						}
+						else {
+				      console.log('FUCK YEAH MOTHERFUCKER REFRESH TOKENS PULLED THROUGH!!!! File Id:' , file.id);
+				      console.log('done')
+				    }
+					})
+				}
+			})
+    }
+		else {
       console.log('File Id:' , file.id);
       console.log('done')
     }
-  });
+	 })
 }
 
 // A synchronous loop method.
