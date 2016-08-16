@@ -13,31 +13,60 @@
         <link href="css/styles.css" rel="stylesheet">
     </head>
     <body>
+      <!-- Pop up Modal -->
+       <div id="popUp" class="modal">
+         <div class="modal-content">
+           <span class="close">x</span>
+            <h3>..And that's it! Feel free to close the tab.<br / /> When the job is done, the processed csv <br /> will appear in your Google drive.</h3>
+         </div>
+       </div>
         <!--[if lt IE 8]>
             <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
         <![endif]-->
 
         <!-- Add your site or application content here -->
-        <div class="container">
+        <div class="container-fluid">
           <div class="row">
-            <div class="col-xs-12">
-              <div class="panel panel-default">
-                <div class="panel-body">
-                  <span class="glyphicon glyphicon-cloud-upload"></span>
-                  <h2>Prospectify</h2>
-                  <a href="/auth">Log in to Google</a>'
-                  <div class="progress">
-                    <div class="progress-bar" role="progressbar"></div>
-                  </div>
-                  <button class="btn btn-lg upload-btn" type="button">Upload File</button>
-                  <h4>Hover to see an example .csv</h4>
-                </div>
+            <div class="col-xs-12" >
+              <div id="top">
+                <span class="glyphicon glyphicon-cloud-upload" style="padding-right:1%;"></span>
+                <h1>Prospectify</h1>
               </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-xs-7" id="instructions">
+              <h3>Instructions</h3>
+              <ul>
+                <li>The first column needs the header "Company name"</li>
+                <li>The input format can be either URL and/or regular text. ie. apple.com or apple</li>
+                <li>The file extension must be .csv.</li>
+              </ul>
+            </div>
+            <div class="col-xs-5" style="padding:0px;">
+              <img src="assets/example.gif"/>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-xs-5" style="padding:0px;">
+              <img src="assets/result.gif"/>
+            </div>
+            <div class="col-xs-7" id="output">
+              <h3>Output</h3>
+              <ul>
+                <li>Company name, contact information, domain, and wappalyzer.</li>
+                <li>Capture rate depends on the quality of input. Usually 40-60%</li>
+              </ul>
+            </div>
+          </div>
+          <div class="row upload-btn">
+            <div class="col-xs-12" id="uploadFile">
+              <h2>Upload File</h2>
             </div>
           </div>
         </div>
 
-        <input id="upload-input" type="file" name="uploads[]" multiple="multiple"></br>
+        <input id="upload-input" type="file" name="uploads[]" multiple="multiple">
 
         <script src="https://code.jquery.com/jquery-2.2.0.min.js"></script>
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>

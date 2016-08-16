@@ -18,3 +18,7 @@ Heroku
  admin: https://dashboard-classic.heroku.com/apps/se-prospectify/
 
 Testing
+
+Questions/Issues
+  Future considerations would be to add in workers/child processes to alleviate the r14 memory error that occurs when we run 500+ contacts through it.
+  Open to suggestions for best practices.

@@ -21,8 +21,8 @@ var wappalyzer = require("wappalyzer");
 if (!process.env.CLIENT_ID){
 	var keys = fs.readFileSync('./config.json', 'utf8')
 }
-var EMAIL_KEY = process.env.EMAIL_KEY || JSON.parse(keys).mydata.API_TOKENS.email_key
-var BING_KEY = process.env.BING_KEY || JSON.parse(keys).mydata.API_TOKENS.bing_key
+var EMAIL_KEY = process.env.EMAIL_KEY || JSON.parse(keys).myData.API_TOKENS.email_key
+var BING_KEY = process.env.BING_KEY || JSON.parse(keys).myData.API_TOKENS.bing_key
 
 // Parsing between JSON and CSVs
 var json2csv = require('json2csv');
@@ -64,11 +64,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(cookieParser());
 app.use(session(sess));
 
-// Auth endpoint redirects to Google authorization
-app.get('/auth', function (req, res) {
-    res.redirect(authUrl);
-});
-
 // Authorization callback redirects to homepage
 app.get('/oauth2callback', function (req, res) {
   var code = req.query.code;
@@ -83,7 +78,12 @@ app.get('/oauth2callback', function (req, res) {
 });
 
 app.get('/', function(req, res){
-  res.sendFile(path.join(__dirname, 'views/app.html'));
+	if(req.session.credentials){
+		res.sendFile(path.join(__dirname, 'views/app.html'));
+	}
+	else{
+		res.redirect(authUrl);
+	}
 });
 
 app.post('/upload', function(req, res){
