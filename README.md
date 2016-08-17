@@ -30,5 +30,18 @@ Detailed instructions provided on the landing page: http://se-prospectify.heroku
 ### Questions
 ping @steverino for any questions/troubleshooting help
 
+### Managing API Subscriptions
+If for whatever reason the service is blocked, here's how you can investigate:
+
+Email Hunter
+- https://emailhunter.co/api_keys
+- Shouldn't ever need anything beyond the "growth plan"
+
+BlockSpring
+- https://open.blockspring.com/bs/web-search-top-result-bing
+- Follow the instructions on the landing page; it's fairly straightforward
+- The only snippet of code we're using is under the "node tab" on step 3
+- Account > Billing is where you can manage our payments
+
 ### Issues
  Future considerations would be to add in workers/child processes to alleviate the r14 memory error that occurs when we run 500+ contacts through it. Open to suggestions for best practices.
