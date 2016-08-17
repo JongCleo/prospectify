@@ -7,8 +7,8 @@ Detailed instructions provided on the landing page: http://se-prospectify.heroku
 
 1. Ensure that Node.js v 5.7.0 or later is installed
 2. Clone the repository
-3. Run npm install
-4. node app will start the server, at http://localhost:8080/
+3. Run `npm install`
+4. `node app` will start the server, at http://localhost:8080/
 
 ### Developers
 
@@ -23,13 +23,12 @@ Detailed instructions provided on the landing page: http://se-prospectify.heroku
 - The contact will be written to an array and the app will move onto the next entry in the .csv
 
 ### Heroku Debugging
- run command: heroku logs --app se-prospectify -t
+ run command: `heroku logs --app se-prospectify -t`
  admin: https://dashboard-classic.heroku.com/apps/se-prospectify/
  Usually you just need to restart the dynos.
 
 ### Questions
-   ping @steverino for any questions/troubleshooting help
+ping @steverino for any questions/troubleshooting help
 
 ### Issues
-     Future considerations would be to add in workers/child processes to alleviate the r14 memory error that occurs when we run 500+ contacts through it.
-     Open to suggestions for best practices.
+ Future considerations would be to add in workers/child processes to alleviate the r14 memory error that occurs when we run 500+ contacts through it. Open to suggestions for best practices.
