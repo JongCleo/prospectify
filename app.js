@@ -117,17 +117,22 @@ app.post('/upload', function(req, res){
       syncLoop(jsonArray.length,
 
       function(loop){
-				setTimeout(function () {
-					company_input = jsonArray[loop.iteration()]['Company name'].replace(regex_var, '').split('.')[0]
-					url_input = encodeURIComponent(company_input.toLowerCase().replace('llc','').replace('inc','').split(" ").join('+'))
+				if(!jsonArray[loop.iteration()]['Company name']){
+					loop.next()
+				}
+				else{
+					setTimeout(function () {
+						company_input = jsonArray[loop.iteration()]['Company name'].replace(regex_var, '').split('.')[0]
+						url_input = encodeURIComponent(company_input.toLowerCase().replace('llc','').replace('inc','').split(" ").join('+'))
 
-					processTheContact(company_input,url_input,
-					function(returnedContact){
-						theArray.prospects.push(returnedContact);
-						console.log(returnedContact)
-						loop.next()
-					})
-				}, 8000)
+						processTheContact(company_input,url_input,
+						function(returnedContact){
+							theArray.prospects.push(returnedContact);
+							console.log(returnedContact)
+							loop.next()
+						})
+					}, 8000)
+				}
       },
 
       function(){
