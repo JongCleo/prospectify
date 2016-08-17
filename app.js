@@ -373,6 +373,7 @@ function uploadFile(auth, fileName){
     mimeType: 'text/csv',
     body: fs.createReadStream('upload/'+fileName)
   };
+
   drive.files.create({
      resource: fileMetadata,
      media: media,
@@ -382,7 +383,7 @@ function uploadFile(auth, fileName){
     if(err) {
       // Handle error
       console.log(err+"retrying with refreshtokens");
-			auth.refreshAcessTokens(function(err, tokens){
+			auth.refreshAccessToken(function(err, tokens){
 				if(err){
 						console.log(err+"damn son no refreshtokens. Now we're screwed.")
 						return
