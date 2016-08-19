@@ -114,6 +114,10 @@ app.post('/upload', function(req, res){
 		// to match each company. Afterwards, export theArray into a new csv and
 		// upload it to the user's G-drive.
     converter.on("end_parsed", function (jsonArray) {
+			if(jsonArray.length > 450){
+				console.log("ERROR: 450 max rows per file. Otherwise we'll get fucking r14 errors on heroku.")
+				return
+			}
       syncLoop(jsonArray.length,
 
       function(loop){

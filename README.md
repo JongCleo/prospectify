@@ -1,7 +1,10 @@
 # prospectify
+
 Streamlining the process of finding a prospect from a company.
 It will take input type CSV and upload a processed CSV in the authed user's Google Drive.
 Detailed instructions provided on the landing page: http://se-prospectify.herokuapp.com/
+Project main: @steverino
+Project backup: @stig
 
 ### Set Up
 
